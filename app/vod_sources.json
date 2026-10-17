@@ -1,0 +1,573 @@
+{
+ "providers": [
+  {
+   "name": "vidlink.pro",
+   "movie": "https://vidlink.pro/movie/{tmdb}",
+   "tv": "https://vidlink.pro/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidzee.wtf",
+   "movie": "https://player.vidzee.wtf/embed/movie/{tmdb}",
+   "tv": "https://player.vidzee.wtf/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidrock.net",
+   "movie": "https://vidrock.net/embed/movie/{tmdb}",
+   "tv": "https://vidrock.net/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidrock.ru",
+   "movie": "https://vidrock.ru/movie/{tmdb}",
+   "tv": "https://vidrock.ru/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidrock.to",
+   "movie": "https://vidrock.to/embed/movie/{tmdb}",
+   "tv": "https://vidrock.to/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "moviesapi.to",
+   "movie": "https://moviesapi.to/movie/{tmdb}",
+   "tv": "https://moviesapi.to/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidstorm.ru",
+   "movie": "https://vidstorm.ru/embed/movie/{tmdb}",
+   "tv": "https://vidstorm.ru/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "embed.vidrift.net",
+   "movie": "https://embed.vidrift.net/embed/movie/{tmdb}",
+   "tv": "https://embed.vidrift.net/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidlove.cc",
+   "movie": "https://player.vidlove.cc/embed/movie/{tmdb}",
+   "tv": "https://player.vidlove.cc/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidlux.xyz",
+   "movie": "https://vidlux.xyz/embed/movie/{tmdb}",
+   "tv": "https://vidlux.xyz/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "nxsha.space",
+   "movie": "https://nxsha.space/embed/movie/{tmdb}",
+   "tv": "https://nxsha.space/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "cinezo.live",
+   "movie": "https://player.cinezo.live/embed/movie/{tmdb}",
+   "tv": "https://player.cinezo.live/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "streamvaultsrc.click",
+   "movie": "https://streamvaultsrc.click/embed/movie/{tmdb}",
+   "tv": "https://streamvaultsrc.click/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidsrc.su",
+   "movie": "https://vidsrc.su/embed/movie/{tmdb}",
+   "tv": "https://vidsrc.su/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "mappletv.uk",
+   "movie": "https://mappletv.uk/embed/movie/{tmdb}",
+   "tv": "https://mappletv.uk/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidcore.org",
+   "movie": "https://vidcore.org/embed/movie/{tmdb}",
+   "tv": "https://vidcore.org/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidsrc.pm",
+   "movie": "https://vidsrc.pm/embed/movie/{tmdb}",
+   "tv": "https://vidsrc.pm/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidstuck.cc",
+   "movie": "https://vidstuck.cc/embed/movie/{tmdb}",
+   "tv": "https://vidstuck.cc/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidy.st",
+   "movie": "https://vidy.st/movie/{tmdb}",
+   "tv": "https://vidy.st/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidzen.fun",
+   "movie": "https://vidzen.fun/movie/{tmdb}",
+   "tv": "https://vidzen.fun/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "atlantic.st",
+   "movie": "https://atlantic.st/embed/movie/{tmdb}",
+   "tv": "https://atlantic.st/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "embed.vidrift.in",
+   "movie": "https://embed.vidrift.in/embed/movie/{tmdb}",
+   "tv": "https://embed.vidrift.in/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "flicky.host",
+   "movie": "https://flicky.host/embed/movie/{tmdb}",
+   "tv": "https://flicky.host/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "play.modocine.com",
+   "movie": "https://play.modocine.com/embed/movie/{tmdb}",
+   "tv": "https://play.modocine.com/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "embed-api.stream",
+   "movie": "https://player.embed-api.stream/embed/movie/{tmdb}",
+   "tv": "https://player.embed-api.stream/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "stellar.rip",
+   "movie": "https://stellar.rip/embed/movie/{tmdb}",
+   "tv": "https://stellar.rip/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "stream.torrentio.to",
+   "movie": "https://stream.torrentio.to/movie/{tmdb}",
+   "tv": "https://stream.torrentio.to/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "toflix.co",
+   "movie": "https://toflix.co/embed/movie/{tmdb}",
+   "tv": "https://toflix.co/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidapi.qzz.io",
+   "movie": "https://vidapi.qzz.io/movie/{tmdb}",
+   "tv": "https://vidapi.qzz.io/tv/{imdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidflix.club",
+   "movie": "https://vidflix.club/movie/{tmdb}",
+   "tv": "https://vidflix.club/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidspark.to",
+   "movie": "https://vidspark.to/movie/{tmdb}",
+   "tv": "https://vidspark.to/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidsrc.ru",
+   "movie": "https://vidsrc.ru/embed/movie/{tmdb}",
+   "tv": "https://vidsrc.ru/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "web.nxsha.app",
+   "movie": "https://web.nxsha.app/embed/movie/{tmdb}",
+   "tv": "https://web.nxsha.app/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "chillflix.pw",
+   "movie": "https://www.chillflix.pw/embed/movie/{tmdb}",
+   "tv": "https://www.chillflix.pw/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "candlestream.xyz",
+   "movie": "https://candlestream.xyz/embed?type=movie&id={tmdb}",
+   "tv": "https://candlestream.xyz/embed?type=tv&id={tmdb}&season={season}&episode={episode}",
+   "verified": true
+  },
+  {
+   "name": "mapple.fun",
+   "movie": "https://mapple.fun/embed/movie/{tmdb}",
+   "tv": "https://mapple.fun/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "phland.org",
+   "movie": "https://phland.org/embed/movie/{tmdb}",
+   "tv": "https://phland.org/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "rivestream.win",
+   "movie": "https://rivestream.win/embed?type=movie&id={tmdb}",
+   "tv": "https://rivestream.win/embed?type=tv&id={tmdb}&season={season}&episode={episode}",
+   "verified": true
+  },
+  {
+   "name": "streamgoblin.cc",
+   "movie": "https://streamgoblin.cc/watch/movie/{tmdb}",
+   "tv": "https://streamgoblin.cc/player/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidstorm.to",
+   "movie": "https://vidstorm.to/movie/{tmdb}",
+   "tv": "https://vidstorm.to/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "watch.embed-api.stream",
+   "movie": "https://watch.embed-api.stream/embed/movie/{tmdb}",
+   "tv": "https://watch.embed-api.stream/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "zxcstream.com",
+   "movie": "https://zxcstream.com/watch/movie/{tmdb}",
+   "tv": "https://zxcstream.com/watch/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "vidnest.fun",
+   "movie": "https://vidnest.fun/movie/{imdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "cinesrc.st",
+   "movie": "https://cinesrc.st/embed/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "embed.smashystream.com",
+   "movie": "https://embed.smashystream.com/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "rivestream.app",
+   "movie": "https://www.rivestream.app/embed?type=movie&id={imdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "anyembed.xyz",
+   "movie": "https://anyembed.xyz/embed/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "smashystream.com",
+   "movie": "https://player.smashystream.com/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "cinestream.kje.us",
+   "movie": "https://cinestream.kje.us/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "rreelstream.live",
+   "movie": "https://rreelstream.live/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "streamvaults.ru",
+   "movie": "https://streamvaults.ru/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "flixer.gd",
+   "movie": "https://flixer.gd/watch/movie/{tmdb}",
+   "tv": "https://flixer.gd/watch/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "latestmovies.net",
+   "movie": "https://latestmovies.net/watch/movie/{tmdb}",
+   "tv": "https://latestmovies.net/watch/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "mapple.uk",
+   "movie": "https://mapple.uk/watch/movie/{tmdb}",
+   "tv": "https://mapple.uk/watch/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "movienig.ht",
+   "movie": "https://movienig.ht/watch/movie/{imdb}",
+   "tv": "https://movienig.ht/watch/tv/{imdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "67movies.st",
+   "movie": "https://67movies.st/watch/movie/{tmdb}",
+   "tv": "https://67movies.st/watch/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "lightflix.app",
+   "movie": "https://lightflix.app/watch/movie/{tmdb}",
+   "tv": "https://lightflix.app/watch/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "neonflix.st",
+   "movie": "https://neonflix.st/watch/movie/{tmdb}",
+   "tv": "https://neonflix.st/watch/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "arrowtv.net",
+   "movie": "https://arrowtv.net/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "anicine.sbs",
+   "movie": "https://anicine.sbs/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "cdn.vidspark.to",
+   "movie": "https://cdn.vidspark.to/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "cine-nest-nine.vercel.app",
+   "movie": "https://cine-nest-nine.vercel.app/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "cinevibe.cc",
+   "movie": "https://cinevibe.cc/watch/movie/{imdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "flixtrz.com",
+   "movie": "https://flixtrz.com/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "flixzy.pages.dev",
+   "movie": "https://flixzy.pages.dev/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "freekz.to",
+   "movie": null,
+   "tv": "https://freekz.to/tv/{tmdb}/{season}/{episode}",
+   "verified": true
+  },
+  {
+   "name": "moviebite.org",
+   "movie": "https://moviebite.org/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "movienerds.site",
+   "movie": "https://movienerds.site/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "noirx.live",
+   "movie": "https://noirx.live/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "noirx.me",
+   "movie": "https://noirx.me/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "popwatch.to",
+   "movie": "https://popwatch.to/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "stellar.gdn",
+   "movie": "https://stellar.gdn/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "cinezo.st",
+   "movie": "https://www.cinezo.st/watch/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "flikhub.net",
+   "movie": "https://www.flikhub.net/movie/{tmdb}",
+   "tv": null,
+   "verified": true
+  },
+  {
+   "name": "videasy.net",
+   "movie": "https://player.videasy.net/movie/{tmdb}",
+   "tv": "https://player.videasy.net/tv/{tmdb}/{season}/{episode}",
+   "verified": false
+  },
+  {
+   "name": "vidfast.pro",
+   "movie": "https://vidfast.pro/movie/{tmdb}",
+   "tv": "https://vidfast.pro/tv/{tmdb}/{season}/{episode}",
+   "verified": false
+  },
+  {
+   "name": "vidsrc.to",
+   "movie": "https://vidsrc.to/embed/movie/{tmdb}",
+   "tv": "https://vidsrc.to/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": false
+  },
+  {
+   "name": "vidsrc.cc",
+   "movie": "https://vidsrc.cc/v2/embed/movie/{tmdb}",
+   "tv": "https://vidsrc.cc/v2/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": false
+  },
+  {
+   "name": "vsembed.ru",
+   "movie": "https://vsembed.ru/embed/movie?tmdb={tmdb}",
+   "tv": "https://vsembed.ru/embed/tv?tmdb={tmdb}&season={season}&episode={episode}",
+   "verified": false
+  },
+  {
+   "name": "vidsrc.xyz",
+   "movie": "https://vidsrc.xyz/embed/movie?tmdb={tmdb}",
+   "tv": "https://vidsrc.xyz/embed/tv?tmdb={tmdb}&season={season}&episode={episode}",
+   "verified": false
+  },
+  {
+   "name": "vidking.net",
+   "movie": "https://www.vidking.net/embed/movie/{tmdb}",
+   "tv": "https://www.vidking.net/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": false
+  },
+  {
+   "name": "vixsrc.to",
+   "movie": "https://vixsrc.to/movie/{tmdb}",
+   "tv": "https://vixsrc.to/tv/{tmdb}/{season}/{episode}",
+   "verified": false
+  },
+  {
+   "name": "multiembed.mov",
+   "movie": "https://multiembed.mov/?video_id={imdb}",
+   "tv": "https://multiembed.mov/?video_id={imdb}&s={season}&e={episode}",
+   "verified": false
+  },
+  {
+   "name": "2embed.cc",
+   "movie": "https://www.2embed.cc/embed/{imdb}",
+   "tv": "https://www.2embed.cc/embedtv/{imdb}&s={season}&e={episode}",
+   "verified": false
+  },
+  {
+   "name": "embed.su",
+   "movie": "https://embed.su/embed/movie/{tmdb}",
+   "tv": "https://embed.su/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": false
+  },
+  {
+   "name": "autoembed.cc",
+   "movie": "https://player.autoembed.cc/embed/movie/{tmdb}",
+   "tv": "https://player.autoembed.cc/embed/tv/{tmdb}/{season}/{episode}",
+   "verified": false
+  },
+  {
+   "name": "111movies.com",
+   "movie": "https://111movies.com/movie/{tmdb}",
+   "tv": "https://111movies.com/tv/{tmdb}/{season}/{episode}",
+   "verified": false
+  },
+  {
+   "name": "primesrc.me",
+   "movie": "https://primesrc.me/embed/movie?tmdb={tmdb}",
+   "tv": "https://primesrc.me/embed/tv?tmdb={tmdb}&season={season}&episode={episode}",
+   "verified": false
+  },
+  {
+   "name": "vidup.to",
+   "movie": "https://vidup.to/movie/{tmdb}",
+   "tv": "https://vidup.to/tv/{tmdb}/{season}/{episode}",
+   "verified": false
+  },
+  {
+   "name": "moviesapi.club",
+   "movie": "https://moviesapi.club/movie/{tmdb}",
+   "tv": "https://moviesapi.club/tv/{tmdb}-{season}-{episode}",
+   "verified": false
+  }
+ ],
+ "blockedHosts": [
+  "ablelaunchshorts.com",
+  "adexchangerapid.com",
+  "adtrafficquality.google",
+  "amazon-adsystem.com",
+  "asiafilm.org",
+  "doubleclick.net",
+  "ezextractpro.com",
+  "fortyfile.com",
+  "gamixo.org",
+  "googlesyndication.com",
+  "interlinecustomroofingllc.com",
+  "lookmovie2.to",
+  "loyal-product.com",
+  "luugy.com",
+  "openshield.canatrace.com",
+  "openx.net",
+  "pubmatic.com",
+  "pv.95bvt11mgwlw1lz8b.cyou",
+  "q8mxbm.loklz8wgfbtcovm75uy3bew3.cyou",
+  "reatasesetitoefa.com",
+  "rtmark.net",
+  "rubiconproject.com",
+  "sorrowfulpsychology.com",
+  "videodownloader.site",
+  "watchseries.domains",
+  "wayftertheyhadgo.org",
+  "werefilledwit.org"
+ ]
+}

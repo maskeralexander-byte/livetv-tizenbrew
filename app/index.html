@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>Live TV</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+    <aside id="menu"></aside>
+    <main id="main">
+        <header id="top">
+            <div id="title"></div>
+            <div id="clock"></div>
+        </header>
+        <div id="toolbar"></div>
+        <div id="status"></div>
+        <div id="list"></div>
+    </main>
+</div>
+
+<div id="player" class="hidden">
+    <video id="video" autoplay playsinline></video>
+    <!-- Not sandboxed: the big sources refuse to play in a sandbox. The remote's keys stay in this page,
+         so the source page never gets a user gesture, and without one Chromium blocks its pop-ups and
+         redirects; config.xml also keeps the app from navigating away. -->
+    <iframe id="frame" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="origin"></iframe>
+    <div id="banner" class="hidden">
+        <div id="bannerNum"></div>
+        <div id="bannerText">
+            <div id="bannerTitle"></div>
+            <div id="bannerSub"></div>
+        </div>
+        <div id="bannerHint"></div>
+    </div>
+    <div id="playerMsg" class="hidden"></div>
+</div>
+
+<input id="search" type="text" autocomplete="off" spellcheck="false">
+
+<script src="lib/hls.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
