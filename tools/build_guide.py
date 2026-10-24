@@ -6,12 +6,18 @@ the Roku in particular is too slow to read. It's rebuilt every few hours by
 .github/workflows/guide.yml. Standard library only.
 
 Listings come from free XMLTV guides:
+  * iptv-epg.org: the US, UK, Canada, Australia, India and other English-speaking countries, by the
+    playlist's own channel ids (local stations as "ABCKSTP.us"), refreshed every few hours
   * i.mjh.nz: Pluto TV (by channel id), Samsung TV Plus, Plex, The Roku Channel, PBS
-  * epgshare01: US cable networks, US local stations (by call sign), UK and Australia
+  * epgshare01: US cable networks, US local stations (by call sign), US sports and DistroTV, and
+    the English-speaking countries' TV (UK, Canada, Ireland, Australia, New Zealand, India,
+    Singapore, Malaysia, the Philippines, Nigeria, Kenya, South Africa, Jamaica)
 
 and are matched to iptv-org's English playlist, so each schedule is keyed by the stream URL the
 apps play. Name matches only count within the same country and the same time zone feed
-(a West Coast feed never gets the East Coast schedule).
+(a West Coast feed never gets the East Coast schedule). A guide whose listings for a channel run
+out within a couple of hours (epgshare01 sometimes stops updating) only counts when nothing
+fresher has the channel.
 
 guide.json (all times are minutes from "base", a Unix time in seconds):
   {
@@ -39,17 +45,36 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 PLAYLIST = "https://iptv-org.github.io/iptv/languages/eng.m3u"
+IPTV_EPG = "https://iptv-epg.org/files/epg-%s.xml.gz"
+# iptv-epg.org's countries, as the playlist's ids name them ("gb" is ".uk").
+IPTV_EPG_COUNTRIES = {"us": "us", "gb": "uk", "ca": "ca", "au": "au", "in": "in", "nz": "nz", "sg": "sg",
+                      "za": "za", "ph": "ph", "ng": "ng", "my": "my", "jm": "jm", "gh": "gh", "ug": "ug"}
 MJH = "https://raw.githubusercontent.com/matthuisman/i.mjh.nz/master/"
 SHARE = "https://epgshare01.online/epgshare01/epg_ripper_"
 
 HOURS = 16          # how far ahead to keep listings
+FRESH_HOURS = 2     # a channel's listings should reach at least this far ahead
 MAX_PROGRAMMES = 14  # per channel
 DESCRIBED = 4        # programmes per channel that keep their description
 DESC_LEN = 160
 
 PLUTO_RE = re.compile(r"jmp2\.uk/plu-([0-9a-f]{24})|pluto\.tv/.*?/channel/([0-9a-f]{24})|/stitch/hls/channel/([0-9a-f]{24})")
-STOP_WORDS = {"hd", "east", "west", "pacific", "mountain", "feed", "the", "channel", "tv",
+STOP_WORDS = {"hd", "sd", "east", "west", "pacific", "mountain", "feed", "the", "channel", "tv",
               "network", "us", "usa", "and", "live"}
+# epgshare01 guides by country (besides US2 and US_LOCALS1, which are read separately).
+SHARE_GUIDES = [("UK1", "uk"), ("CA2", "ca"), ("IE1", "ie"), ("AU1", "au"), ("NZ1", "nz"), ("IN1", "in"),
+                ("IN4", "in"), ("SG1", "sg"), ("MY1", "my"), ("PH2", "ph"), ("NG1", "ng"), ("KE1", "ke"),
+                ("ZA1", "za"), ("JM1", "jm"), ("US_SPORTS1", "us")]
+# Playlist ids a guide lists under another name ("TCM.us" is "Turner.Classic.Movies.HD.us2"); Adult
+# Swim shares Cartoon Network's channel.
+ALIASES = {"adultswim": "cartoonnetwork", "tcm": "turnerclassicmovies", "hsn": "hsnhomeshoppingnetwork",
+           "fnx": "fnxfirstnationsexperience", "theyoungturks": "tytheyoungturks"}
+# The same for channel names (as loose() writes them).
+NAME_ALIASES = {"afv": "americasfunniesthomevideos", "shoutfactory": "shout", "doctorwhoclassic": "classicdoctorwho",
+                "nbclx": "nbclxhome"}
+# Feeds for another part of the world run their own schedule ("Angel TV Africa", "UniMas Central").
+REGION_FEEDS = {"africa", "arabia", "asia", "australia", "europe", "emea", "fareast", "indochina", "indonesia",
+                "latinamerica", "middleeast", "vietnam", "central", "mountain"}
 # Feed codes that name a country: "Homeful.ca@US" is Homeful's US feed.
 FEED_COUNTRIES = {"us": "us", "usa": "us", "uk": "uk", "gb": "uk", "ca": "ca", "au": "au", "in": "in",
                   "india": "in", "ie": "ie", "nz": "nz"}
@@ -60,7 +85,7 @@ def log(*a):
 
 
 def fetch(url, cache_dir):
-    """Returns the body of url (un-gzipped); with cache_dir, reads a saved copy if there is one."""
+    """Returns the body of url (possibly gzipped); with cache_dir, reads a saved copy if there is one."""
     name = re.sub(r"[^A-Za-z0-9._-]", "_", url.split("://", 1)[1])
     path = os.path.join(cache_dir, name) if cache_dir else None
     if path and os.path.exists(path):
@@ -79,9 +104,13 @@ def fetch(url, cache_dir):
                 time.sleep(5 * (attempt + 1))
         if path:
             open(path, "wb").write(data)
+    return data
+
+
+def text_of(data):
     if data[:2] == b"\x1f\x8b":
         data = gzip.decompress(data)
-    return data
+    return data.decode("utf-8", "replace")
 
 
 # ---- Playlist ----
@@ -120,10 +149,12 @@ def norm(name):
 
 def loose(name):
     s = re.sub(r"\(.*?\)|\[.*?\]", " ", name).lower()
-    s = re.sub(r"^(pluto tv|samsung tv plus|samsung|plex|the roku channel|roku)\s+", "", s)
+    # Stingray's music channels go without the brand on Plex ("Pop Adult").
+    s = re.sub(r"^(pluto tv|samsung tv plus|samsung|plex|the roku channel|roku|stingray)\s+", "", s)
     s = s.replace("&", " and ").replace("+", " plus ")
     words = [w for w in re.findall(r"[a-z0-9]+", s) if w not in STOP_WORDS]
-    return "".join(words)
+    key = "".join(words)
+    return NAME_ALIASES.get(key, key)
 
 
 def region_of(text):
@@ -156,7 +187,9 @@ def load_xmltv(data, now, until):
     progs = {}
     if not data:
         return channels, progs
-    for _, el in ET.iterparse(io.BytesIO(data), events=("end",)):
+    # Read as it unzips: the US guide is about half a gigabyte of XML.
+    stream = gzip.GzipFile(fileobj=io.BytesIO(data)) if data[:2] == b"\x1f\x8b" else io.BytesIO(data)
+    for _, el in ET.iterparse(stream, events=("end",)):
         tag = el.tag
         if tag == "channel":
             names = [n.text.strip() for n in el.findall("display-name") if n.text]
@@ -264,7 +297,7 @@ ID_SUFFIXES = {"hd", "east", "west", "pacific", "feed", "a"}
 
 
 def us2_key(cid):
-    """'FX.HD.(Pacific).us2' -> ('fx', 'west'): a cable network's id and time zone feed."""
+    """'FX.HD.(Pacific).us2' -> ('fx', 'west'): a channel's id in an epgshare01 guide, and its time zone feed."""
     words = [w for w in re.split(r"[.()\s]+", cid.rsplit(".", 1)[0].lower()) if w]
     reg = region_of(" ".join(words))
     while len(words) > 1 and words[-1] in ID_SUFFIXES:
@@ -273,12 +306,39 @@ def us2_key(cid):
 
 
 def playlist_key(base_name):
-    """'AandEHD' -> 'aande', to look up in the cable network ids."""
+    """'AandEHD' -> 'aande', to look up in the epgshare01 ids."""
     s = base_name.lower()
     for suffix in ("hd", "east", "west", "pacific"):
         if s.endswith(suffix) and len(s) > len(suffix) + 2:
             s = s[: -len(suffix)]
-    return s
+    return ALIASES.get(s, s)
+
+
+CALL_FEED_RE = re.compile(r"^([KW][A-Z]{2,3})(?:TV|DT|LD|CD|CA|D)?\d*$")
+MAIN_FEEDS = {"", "sd", "hd", "fhd", "uhd", "4k", "east", "english", "us", "usa", "national"}
+
+
+def epg_keys(base_name, feed, reg, country):
+    """iptv-epg.org ids to try for a playlist id ("AdultSwim", "West"), without the country."""
+    f = feed.lower()
+    if f == "east" and country not in ("us", "ca"):
+        return [base_name + feed]  # "BBC One East" is a region
+    if f in ("west", "pacific", "westhd", "pacifichd") or (reg == "west" and f in MAIN_FEEDS):
+        return [base_name + "Pacific", base_name + "West"]
+    if reg:
+        return [base_name + feed]
+    if f in MAIN_FEEDS:
+        return [base_name]
+    m = CALL_FEED_RE.match(feed)
+    if m:
+        # An affiliate ("ABC.us@KSTPTV" is "ABCKSTP.us"); a network on a station's subchannel
+        # ("Outlaw.us@WGGSTV") runs the network's own schedule.
+        keys = [base_name + m.group(1), base_name + feed]
+        if base_name.lower() not in NETWORKS:
+            keys.append(base_name)
+        return keys
+    # Another country's or region's feed ("FailArmy.us@Poland") only matches its own id.
+    return [base_name + feed]
 
 
 def tidy(text):
@@ -312,7 +372,7 @@ def main():
     until = now + HOURS * 3600
 
     log("playlist")
-    playlist = parse_m3u(fetch(PLAYLIST, args.cache).decode("utf-8", "replace"))
+    playlist = parse_m3u(text_of(fetch(PLAYLIST, args.cache)))
     log("  %d entries" % len(playlist))
 
     def guide(url, label):
@@ -322,6 +382,16 @@ def main():
         log("  %d channels, %d with listings (%.1fs)" % (len(chans), sum(1 for k in progs if not k.startswith("#")), time.time() - t0))
         return chans, progs
 
+    # iptv-epg.org by channel id: {(country, lowercase id): (label, id)}.
+    epg_ids = {}
+    epg_progs = {}
+    for code, country in IPTV_EPG_COUNTRIES.items():
+        label = "iptv-epg " + code
+        ch, pr = guide(IPTV_EPG % code, label)
+        epg_progs[label] = pr
+        for cid in ch:
+            if pr.get(cid):
+                epg_ids.setdefault((country, cid.lower()), (label, cid))
     pluto_ch, pluto = guide(MJH + "PlutoTV/all.xml", "Pluto TV")
     pluto_us, _ = guide(MJH + "PlutoTV/us.xml", "Pluto TV (US channel list)")
     indexes = []
@@ -330,16 +400,23 @@ def main():
     for label, path in (("plex", "Plex/all.xml"), ("roku", "Roku/all.xml"), ("pbs", "PBS/all.xml")):
         ch, pr = guide(MJH + path, label)
         indexes.append(NameIndex(label, ch, pr))
+    # epgshare01's ids are made from channel names ("Cartoon.Network.(Pacific).us2"), so they also
+    # match the playlist's ids ("AdultSwim.us@West" through ALIASES): (country, key, feed) -> guide.
+    share_ids = {}
+    share_progs = {}
     us2_ch, us2 = guide(SHARE + "US2.xml.gz", "US networks")
-    us2_index = NameIndex("us2", us2_ch, us2)
-    indexes.append(us2_index)
-    us2_ids = {}
-    for cid in us2_ch:
-        if us2.get(cid):
-            us2_ids.setdefault(us2_key(cid), cid)
-    for label, country in (("UK1", "uk"), ("AU1", "au")):
-        ch, pr = guide(SHARE + label + ".xml.gz", label)
-        indexes.append(NameIndex(label, ch, pr, lambda cid, c=country: c))
+    indexes.append(NameIndex("us2", us2_ch, us2))
+    for label, country in [("US2", "us")] + SHARE_GUIDES:
+        if label == "US2":
+            ch, pr = us2_ch, us2
+        else:
+            ch, pr = guide(SHARE + label + ".xml.gz", label)
+            indexes.append(NameIndex(label, ch, pr, lambda cid, c=country: c))
+        share_progs[label] = pr
+        for cid in ch:
+            if pr.get(cid):
+                key, reg = us2_key(cid)
+                share_ids.setdefault((country, key, reg), (label, cid))
     loc_ch, loc = guide(SHARE + "US_LOCALS1.xml.gz", "US local stations")
     # A station's full-power channel first, then its low-power and translator ones.
     rank = {"DT": 0, "TV": 1, "": 2, "CD": 3, "CA": 4, "LD": 5, "D": 6}
@@ -368,6 +445,40 @@ def main():
     stats = {}
     missing = []
     matched = []
+    def candidates(ch, base_name, country, feed, reg):
+        """The guides that have this channel, best first, as (source, id, programmes)."""
+        m = PLUTO_RE.search(ch["url"])
+        if m:
+            pid = next(g for g in m.groups() if g)
+            if pluto.get(pid):
+                yield ("pluto", pid, pluto[pid])
+        if base_name:
+            # Under its own id, or another channel's it shares (Adult Swim is on Cartoon Network).
+            keys = epg_keys(base_name, feed, reg, country)
+            if base_name.lower() in ALIASES:
+                keys += epg_keys(ALIASES[base_name.lower()], feed, reg, country)
+            for key in keys:
+                found = epg_ids.get((country, (key + "." + country).lower()))
+                if found:
+                    yield (found[0], found[1], epg_progs[found[0]][found[1]])
+                    break
+        # A local station's own schedule first, then the network's.
+        if country == "us" and reg == "":
+            call = call_sign(ch)
+            if call and call in locals_by_call:
+                cid = locals_by_call[call]
+                yield ("locals", cid, loc[cid])
+        if base_name and feed.lower() not in REGION_FEEDS:
+            found = share_ids.get((country, playlist_key(base_name), reg))
+            if found:
+                yield (found[0].lower(), found[1], share_progs[found[0]][found[1]])
+        for exact_only in (True, False):
+            for idx in indexes:
+                cid = idx.find(country, ch["name"], reg, exact_only)
+                if cid:
+                    yield (idx.label + ("" if exact_only else "~"), cid, idx.progs[cid])
+
+    fresh_until = now + FRESH_HOURS * 3600
     for ch in playlist:
         if ch["url"] in by_url:
             continue
@@ -375,29 +486,13 @@ def main():
         country = FEED_COUNTRIES.get(feed.lower()) or country or "us"
         reg = region_of(feed + " " + ch["name"])
         hit = None
-        m = PLUTO_RE.search(ch["url"])
-        if m:
-            pid = next(g for g in m.groups() if g)
-            if pluto.get(pid):
-                hit = ("pluto", pid, pluto[pid])
-        if hit is None and country == "us":
-            cid = us2_ids.get((playlist_key(base_name), reg)) if base_name else None
-            if cid:
-                hit = ("us2", cid, us2[cid])
-        if hit is None and country == "us" and reg == "":
-            call = call_sign(ch)
-            if call and call in locals_by_call:
-                cid = locals_by_call[call]
-                hit = ("locals", cid, loc[cid])
-        if hit is None:
-            for exact_only in (True, False):
-                for idx in indexes:
-                    cid = idx.find(country, ch["name"], reg, exact_only)
-                    if cid:
-                        hit = (idx.label + ("" if exact_only else "~"), cid, idx.progs[cid])
-                        break
-                if hit:
-                    break
+        stale = None
+        for found in candidates(ch, base_name, country, feed, reg):
+            if found[2][-1][1] >= fresh_until:
+                hit = found
+                break
+            stale = stale or found
+        hit = hit or stale
         if hit is None:
             missing.append(ch)
             continue

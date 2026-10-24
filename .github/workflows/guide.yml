@@ -1,4 +1,4 @@
-# Rebuilds guide.json every 3 hours and publishes it on the "guide" branch, where the Live TV apps
+# Rebuilds guide.json every 6 hours and publishes it on the "guide" branch, where the Live TV apps
 # download it from:
 #   https://raw.githubusercontent.com/<owner>/<repo>/guide/guide.json
 # The branch holds a single commit that's replaced each time, so the repository doesn't grow.
@@ -6,7 +6,7 @@ name: Guide
 
 on:
   schedule:
-    - cron: "23 */3 * * *"
+    - cron: "23 */6 * * *"
   workflow_dispatch:
 
 permissions:

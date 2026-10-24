@@ -22,9 +22,10 @@ The app files are in `app/`. They are built from the Live TV Android project (`.
 ## TV guide
 
 `tools/build_guide.py` builds `guide.json`, what's on now and for the next 16 hours on each channel, from
-free XMLTV guides (Pluto TV, Samsung TV Plus, Plex, The Roku Channel, PBS and epgshare01). The **Guide**
-workflow (`.github/workflows/guide.yml`) runs it every 3 hours and publishes the result on the `guide`
-branch, which keeps a single commit. The Live TV phone and Roku apps download it from
+free XMLTV guides: [iptv-epg.org](https://iptv-epg.org/guides) (matched by channel id, including local
+stations), Pluto TV, Samsung TV Plus, Plex, The Roku Channel and PBS (from i.mjh.nz), and epgshare01. The
+**Guide** workflow (`.github/workflows/guide.yml`) runs it every 6 hours and publishes the result on the
+`guide` branch, which keeps a single commit. The Live TV phone and Roku apps download it from
 `https://raw.githubusercontent.com/maskeralexander-byte/livetv-tizenbrew/guide/guide.json`, and fall back to
 reading the Pluto TV and Samsung TV Plus guides themselves when it's missing or more than 12 hours old.
 To refresh it right away, run the workflow from the **Actions** tab.
