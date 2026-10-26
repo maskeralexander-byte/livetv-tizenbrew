@@ -18,7 +18,7 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--
                 radial-gradient(900px 600px at -10% 110%, #3A1450 0%, transparent 60%), var(--night); }
 
 /* Menu */
-#menu { width: 400px; height: 100%; overflow: hidden; padding: 40px 20px; background: rgba(11, 10, 26, 0.72); }
+#menu { position: relative; width: 400px; height: 100%; overflow: hidden; padding: 40px 20px; background: rgba(11, 10, 26, 0.72); }
 .brand { font-family: Bungee; font-size: 46px; color: var(--violet); padding: 0 16px 28px; }
 .brand span { color: var(--cyan); }
 .menu-header { font-size: 20px; letter-spacing: 2px; color: var(--dim); padding: 26px 16px 8px; }
@@ -35,11 +35,14 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--
 #top { display: flex; align-items: center; }
 #title { flex: 1; font-size: 48px; font-weight: 600; }
 #clock { font-family: Bungee; font-size: 40px; color: var(--cyan); }
-#toolbar { display: flex; gap: 16px; padding: 22px 0 10px; min-height: 92px; }
+#toolbar { display: flex; gap: 16px; padding: 22px 6px 10px; min-height: 92px; overflow: hidden; white-space: nowrap; }
+.strip { display: flex; gap: 16px; }
+.strip .chip { flex: none; }
 .chip { padding: 10px 26px; border-radius: 40px; border: 2px solid rgba(167, 162, 200, 0.4); color: var(--dim); }
 .chip.on { background: rgba(155, 123, 255, 0.22); color: #fff; border-color: transparent; }
 .chip.focused { border-color: var(--cyan); color: #fff; box-shadow: 0 0 0 3px rgba(63, 224, 208, 0.35); }
 .search-box { flex: 1; border-radius: 40px; border: 2px solid rgba(167, 162, 200, 0.4); background: rgba(11, 10, 26, 0.5); }
+.search-box.small { flex: none; width: 380px; }
 .search-box.focused { border-color: var(--violet); box-shadow: 0 0 0 3px rgba(155, 123, 255, 0.35); }
 #search { width: 100%; padding: 14px 30px; font: inherit; color: var(--text); background: transparent; border: 0; outline: 0; }
 #search::placeholder { color: var(--dim); }
@@ -61,6 +64,9 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--
 .name { font-size: 30px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub { font-size: 22px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sub.cyan { color: var(--cyan); }
+.sub .next { color: var(--dim); opacity: 0.8; }
+.row.tall { height: 128px; }
+.row.tall .logo.poster { width: 76px; height: 108px; }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--pink); margin-right: 10px; vertical-align: middle; }
 .progress { width: 60%; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); margin-top: 6px; }
 .progress i { display: block; height: 100%; border-radius: 3px; background: var(--neon); }
@@ -69,8 +75,14 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--
 .row.focused .fav { color: var(--cyan); }
 .row.focused .fav.on { color: #FFC94D; }
 
-/* Episode picker */
+/* Episode picker and free titles' pages */
 .episodes { display: flex; padding-top: 20px; }
+.ep-desc { font-size: 24px; color: var(--dim); margin-top: 10px; max-width: 1000px; max-height: 136px; overflow: hidden; }
+.actions { margin-top: 24px; width: 1000px; }
+.action { padding: 14px 26px; margin-bottom: 8px; border-radius: 18px; background: var(--card); border: 3px solid transparent; }
+.action .name { font-size: 28px; }
+.action.focused { background: #2A2552; border-color: var(--cyan); box-shadow: 0 0 24px rgba(155, 123, 255, 0.45); }
+.actions:not(.list) .action { display: inline-block; margin-right: 16px; padding: 16px 40px; border-radius: 40px; }
 .episodes .logo.poster { width: 240px; height: 360px; border-radius: 20px; font-size: 60px; }
 .ep-body { padding-left: 56px; }
 .ep-title { font-size: 46px; font-weight: 600; }
@@ -92,7 +104,10 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--
 #bannerNum { font-family: Bungee; font-size: 64px; color: var(--cyan); min-width: 150px; }
 #bannerText { flex: 1; min-width: 0; }
 #bannerTitle { font-size: 44px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#bannerSub { font-size: 26px; color: var(--cyan); }
-#bannerHint { font-size: 22px; color: var(--dim); padding-left: 30px; }
+#bannerSub { font-size: 26px; color: var(--cyan); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#bannerDesc { font-size: 22px; color: var(--text); opacity: 0.85; max-height: 62px; overflow: hidden; margin-top: 4px; }
+#bannerNext { font-size: 22px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#bannerHint .feed { color: var(--pink); margin-bottom: 6px; }
+#bannerHint { font-size: 22px; color: var(--dim); padding-left: 30px; text-align: right; max-width: 620px; }
 #playerMsg { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); padding: 24px 40px; border-radius: 20px;
     background: rgba(11, 10, 26, 0.9); color: var(--text); }

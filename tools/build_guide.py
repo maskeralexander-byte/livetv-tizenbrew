@@ -52,9 +52,9 @@ IPTV_EPG_COUNTRIES = {"us": "us", "gb": "uk", "ca": "ca", "au": "au", "in": "in"
 MJH = "https://raw.githubusercontent.com/matthuisman/i.mjh.nz/master/"
 SHARE = "https://epgshare01.online/epgshare01/epg_ripper_"
 
-HOURS = 16          # how far ahead to keep listings
+HOURS = 24          # how far ahead to keep listings
 FRESH_HOURS = 2     # a channel's listings should reach at least this far ahead
-MAX_PROGRAMMES = 14  # per channel
+MAX_PROGRAMMES = 48  # per channel (a day of 30-minute shows)
 DESCRIBED = 4        # programmes per channel that keep their description
 DESC_LEN = 160
 
