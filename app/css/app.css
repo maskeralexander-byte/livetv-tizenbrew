@@ -111,3 +111,9 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--
 #bannerHint { font-size: 22px; color: var(--dim); padding-left: 30px; text-align: right; max-width: 620px; }
 #playerMsg { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); padding: 24px 40px; border-radius: 20px;
     background: rgba(11, 10, 26, 0.9); color: var(--text); }
+#playerMsg .why { font-size: 20px; color: var(--dim); margin-top: 10px; max-width: 1400px; }
+#bannerHint .engine { font-size: 18px; margin-bottom: 6px; }
+/* Samsung's AVPlay draws under the page, so while it plays the page is see-through. */
+#avplayer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+html.avplay, html.avplay body, html.avplay #player { background: transparent; }
+html.avplay #app { visibility: hidden; }

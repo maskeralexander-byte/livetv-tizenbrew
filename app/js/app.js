@@ -47,8 +47,8 @@
     };
 
     var player = {
-        open: false, mode: null, list: [], index: 0, feed: 0, tried: {}, hls: null, bannerTimer: null,
-        digits: '', digitTimer: null, stallTimer: null, msgTimer: null,
+        open: false, mode: null, list: [], index: 0, feed: 0, tried: {}, bannerTimer: null,
+        digits: '', digitTimer: null, msgTimer: null,
         // Search the web
         sources: [], sourceIndex: 0, title: null, tmdb: null, season: 1, episode: 1,
         // Free to watch
@@ -729,8 +729,7 @@
 
     function closePlayer() {
         if (player.mode === 'free') saveFreePosition();
-        stopVideo();
-        clearTimeout(player.stallTimer);
+        Video.stop();
         clearInterval(player.clockTimer);
         $('frame').src = 'about:blank';
         $('player').classList.add('hidden');
@@ -740,41 +739,10 @@
         render();
     }
 
-    function stopVideo() {
-        if (player.hls) { player.hls.destroy(); player.hls = null; }
-        var v = $('video');
-        v.onerror = null;
-        v.onwaiting = null;
-        v.onplaying = null;
-        v.ontimeupdate = null;
-        v.onended = null;
-        v.onloadedmetadata = null;
-        v.pause();
-        v.removeAttribute('src');
-        v.load();
-    }
-
-    /** Plays a URL in the video element: natively on the TV, with hls.js in a desktop browser. */
-    function startVideo(url, onFail) {
-        stopVideo();
-        var v = $('video');
-        var native = v.canPlayType('application/vnd.apple.mpegurl') || v.canPlayType('application/x-mpegURL');
-        if (!native && window.Hls && Hls.isSupported() && /\.m3u8?(\?|$)/i.test(url)) {
-            player.hls = new Hls({ liveDurationInfinity: true });
-            player.hls.on(Hls.Events.ERROR, function (ev, data) { if (data.fatal) onFail(); });
-            player.hls.loadSource(url);
-            player.hls.attachMedia(v);
-        } else {
-            v.src = url;
-        }
-        v.onerror = onFail;
-        var p = v.play();
-        if (p && p.catch) p.catch(function () {});
-    }
-
-    function showMessage(text, ms) {
+    /** why: what went wrong, in small print under the message. */
+    function showMessage(text, ms, why) {
         var m = $('playerMsg');
-        m.textContent = text;
+        m.innerHTML = esc(text) + (why ? '<div class="why">' + esc(why) + '</div>' : '');
         m.classList.remove('hidden');
         clearTimeout(player.msgTimer);
         if (ms) player.msgTimer = setTimeout(function () { m.classList.add('hidden'); }, ms);
@@ -810,20 +778,12 @@
     function startFeed() {
         $('playerMsg').classList.add('hidden');
         player.tried[player.feed] = true;
-        startVideo(currentStream().url, feedFailed);
-        // A stream that stalls for 20 seconds counts as failed, like one that errors.
-        var v = $('video');
-        v.onwaiting = function () {
-            clearTimeout(player.stallTimer);
-            player.stallTimer = setTimeout(feedFailed, 20000);
-        };
-        v.onplaying = function () { clearTimeout(player.stallTimer); };
-        v.onwaiting();
+        var s = currentStream();
+        Video.play(s.url, { ua: s.ua, onFail: feedFailed });
     }
 
     /** A feed that doesn't play hands over to the channel's next untried feed. */
-    function feedFailed() {
-        clearTimeout(player.stallTimer);
+    function feedFailed(why) {
         var c = player.list[player.index];
         var feeds = c.feeds || [];
         for (var i = 1; i < feeds.length; i++) {
@@ -836,8 +796,8 @@
                 return;
             }
         }
-        stopVideo();
-        showMessage('This channel isn’t working right now. Press ▲/▼ for another.');
+        Video.stop();
+        showMessage('This channel isn’t working right now. Press ▲/▼ for another.', 0, why);
     }
 
     function switchFeed(d) {
@@ -863,6 +823,7 @@
             $('bannerNext').textContent = on.next ? 'Next: ' + timeOf(on.next.s) + '  ' + on.next.t : '';
             var feeds = c.feeds;
             $('bannerHint').innerHTML = (feeds ? '<div class="feed">Feed ' + (player.feed + 1) + ' of ' + feeds.length + ' · ' + esc(feeds[player.feed].label) + '</div>' : '') +
+                engineLine() +
                 '▲▼ channel · ' + (feeds ? '◀▶ feed · YELLOW favorite' : '▶ favorite') + ' · BACK list';
         } else if (player.mode === 'free') {
             var v = player.videos[player.videoIndex];
@@ -870,7 +831,7 @@
             $('bannerTitle').textContent = player.videos.length > 1 ? player.item.t + '  ·  ' + v.t : v.t;
             updateFreeClock();
             $('bannerDesc').textContent = player.videos.length > 1 ? '' : player.item.d || '';
-            $('bannerHint').innerHTML = 'OK pause · ◀ 10s · ▶ 30s · BACK exit';
+            $('bannerHint').innerHTML = engineLine() + 'OK pause · ◀ 10s · ▶ 30s · BACK exit';
         } else {
             var t = player.title;
             $('bannerNum').textContent = '';
@@ -887,27 +848,40 @@
         player.bannerTimer = setTimeout(function () { b.classList.add('hidden'); }, 6000);
     }
 
+    /** Which player is showing the stream, so a black picture can be tried another way with BLUE. */
+    function engineLine() {
+        var engine = Video.engineName();
+        if (!engine) return '';
+        return '<div class="engine">Playing with ' + esc(engine) + (Video.canSwitch() ? ' · BLUE to switch' : '') + '</div>';
+    }
+
+    function switchPlayer() {
+        var name = Video.switchEngine(player.mode === 'free');
+        if (name) showMessage('Trying the ' + name, 3000);
+    }
+
     function playerKey(key, digit) {
         if (key === 'back') {
             if (player.mode === 'vod' && state.title) { state.episodeField = 2; }
             closePlayer();
             return;
         }
-        var v = $('video');
         if (player.mode === 'live') {
             if (key === 'up' || key === 'chup') tune(player.index - 1);
             else if (key === 'down' || key === 'chdown') tune(player.index + 1);
             else if ((key === 'left' || key === 'right') && switchFeed(key === 'left' ? -1 : 1)) return;
             else if (key === 'right' || key === 'yellow') { toggleFavorite(player.list[player.index]); showBanner(); }
             else if (key === 'digit') typeDigit(digit);
-            else if (key === 'playpause' || key === 'pause' || key === 'play') { if (v.paused) v.play(); else v.pause(); }
+            else if (key === 'playpause' || key === 'pause' || key === 'play') Video.toggle();
+            else if (key === 'blue') switchPlayer();
             else showBanner();
         } else if (player.mode === 'free') {
-            if (key === 'ok' || key === 'playpause' || key === 'pause' || key === 'play') { if (v.paused) v.play(); else v.pause(); }
+            if (key === 'ok' || key === 'playpause' || key === 'pause' || key === 'play') Video.toggle();
             else if (key === 'left') seek(-10);
             else if (key === 'right') seek(30);
             else if (key === 'chdown') seek(-300);
             else if (key === 'chup') seek(300);
+            else if (key === 'blue') switchPlayer();
             showBanner();
         } else {
             if (key === 'left' || key === 'chdown') switchSource(-1);
@@ -943,54 +917,55 @@
         var video = player.videos[player.videoIndex];
         player.lastSaved = startSec;
         $('playerMsg').classList.add('hidden');
-        startVideo(video.url, function () {
-            showMessage('Couldn’t play this title. Press BACK and try again in a moment.');
-        });
-        var v = $('video');
-        v.onloadedmetadata = function () { if (startSec > 0 && startSec < (v.duration || Infinity)) v.currentTime = startSec; };
-        v.ontimeupdate = function () {
-            if (Math.abs(v.currentTime - player.lastSaved) >= 15) saveFreePosition();
-        };
-        v.onended = function () {
-            Free.markWatched(video.id);
-            var next = player.videoIndex + 1;
-            Free.noteRecent(player.item, next >= player.videos.length);
-            if (next < player.videos.length) {
-                player.videoIndex = next;
-                startFreeVideo(Free.resumeAt(player.videos[next].id));
-                showBanner();
-            } else {
-                closePlayer();
+        Video.play(video.url, {
+            startAt: startSec,
+            onFail: function (why) {
+                showMessage('Couldn’t play this title. Press BACK and try again in a moment.', 0, why);
+            },
+            onTime: function (t) {
+                if (Math.abs(t - player.lastSaved) >= 15) saveFreePosition();
+            },
+            onEnded: function () {
+                Free.markWatched(video.id);
+                var next = player.videoIndex + 1;
+                Free.noteRecent(player.item, next >= player.videos.length);
+                if (next < player.videos.length) {
+                    player.videoIndex = next;
+                    startFreeVideo(Free.resumeAt(player.videos[next].id));
+                    showBanner();
+                } else {
+                    closePlayer();
+                }
             }
-        };
+        });
         clearInterval(player.clockTimer);
         player.clockTimer = setInterval(updateFreeClock, 1000);
         showBanner();
     }
 
     function saveFreePosition() {
-        var v = $('video');
         var video = player.videos[player.videoIndex];
-        if (!video || !(v.currentTime > 0)) return;
-        player.lastSaved = v.currentTime;
-        var dur = isFinite(v.duration) && v.duration > 0 ? v.duration : video.dur;
-        Free.save(video.id, v.currentTime, dur);
-        if (player.item.id !== video.id) Free.saveParent(player.item.id, v.currentTime, dur);
+        var t = Video.time();
+        if (!video || !(t > 0)) return;
+        player.lastSaved = t;
+        var dur = Video.duration() || video.dur;
+        Free.save(video.id, t, dur);
+        if (player.item.id !== video.id) Free.saveParent(player.item.id, t, dur);
         // A film finished by hand drops off Continue Watching; a part-way one goes to the front.
-        if (!(dur > 0 && v.currentTime > dur * 0.95) && v.currentTime >= 60) Free.noteRecent(player.item, false);
+        if (!(dur > 0 && t > dur * 0.95) && t >= 60) Free.noteRecent(player.item, false);
     }
 
     function seek(d) {
-        var v = $('video');
-        if (!isFinite(v.duration)) return;
-        v.currentTime = Math.max(0, Math.min(v.duration - 1, v.currentTime + d));
+        var dur = Video.duration();
+        if (!isFinite(dur)) return;
+        Video.seekTo(Math.max(0, Math.min(dur - 1, Video.time() + d)));
     }
 
     function updateFreeClock() {
         if (player.mode !== 'free') return;
-        var v = $('video');
-        var dur = isFinite(v.duration) && v.duration > 0 ? v.duration : (player.videos[player.videoIndex] || {}).dur;
-        $('bannerSub').textContent = (v.paused && v.currentTime > 0 ? 'Paused  ·  ' : '') + clock(v.currentTime || 0) + (dur ? ' / ' + clock(dur) : '');
+        var t = Video.time();
+        var dur = Video.duration() || (player.videos[player.videoIndex] || {}).dur;
+        $('bannerSub').textContent = (Video.paused() && t > 0 ? 'Paused  ·  ' : '') + clock(t) + (dur ? ' / ' + clock(dur) : '');
     }
 
     // ---- Search the web player ----

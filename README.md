@@ -19,6 +19,9 @@ Live TV with a program guide, free movies and TV, for Samsung Smart TVs, as a
 - **Watching TV:** ▲▼ or CH+/CH− change channel, number keys jump to a channel, BACK returns to the list.
   A channel with backup feeds switches to the next one on its own when a feed fails; ◀▶ switch by hand
   and YELLOW favorites it.
+- **Playback:** each stream is tried with the TV's own video player, then hls.js, then Samsung's AVPlay.
+  The banner says which one is playing; BLUE switches to the next if the picture stays black. When none
+  can play a stream, the message says what each one reported.
 - **Free to watch:** public domain films and TV from the Internet Archive. ◀▶ pick a category, ▼ the list,
   OK opens a title (Play, Resume, or its episodes). While it plays: OK pauses, ◀ back 10 s, ▶ ahead 30 s.
   Continue Watching holds what you left part way.
