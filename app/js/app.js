@@ -4,19 +4,25 @@
 (function () {
     var $ = function (id) { return document.getElementById(id); };
     var searchInput = document.getElementById('search');
+    // The Add a channel form's two boxes; like the search box, each moves into its slot when shown.
+    var addLink = document.getElementById('addLink');
+    var addName = document.getElementById('addName');
     var Free = Data.Free;
     var VISIBLE_ROWS = 9;
 
     var state = {
         channels: [],                 // merged channels, each with .feeds when it has backups
-        visible: [],                  // the same with Official channels only applied
+        visible: [],                  // what All channels and the categories show
         byUrl: {},                    // any feed's URL -> its channel
         errors: [],
         loading: true,
-        officialOnly: Data.store('officialOnly') !== '0',
         favorites: Data.storedJson('favorites', []),
         recents: Data.storedJson('recents', []),
-        section: { kind: 'all' },     // all | favorites | recent | group | free | movies
+        section: { kind: 'all' },     // all | favorites | recent | mine | group | free | movies
+        // My channels: the Add form ({ field: 0 link, 1 name, 2 Add, 3 Cancel, link, name, busy, error })
+        // while it's open, and the last thing added or removed.
+        adding: null,
+        notice: '',
         menu: [],
         menuIndex: 0,
         focus: 'list',                // menu | toolbar | list
@@ -74,6 +80,21 @@
     }
 
     document.addEventListener('keydown', function (e) {
+        if (document.activeElement === addLink || document.activeElement === addName) {
+            var a = state.adding;
+            var k = e.keyCode;
+            // Done, Enter, Back, or moving off the box: keep what was typed and leave the box.
+            if (k === 13 || k === 65376 || k === 10009 || k === 27 || k === 65385 || k === 38 || k === 40) {
+                e.preventDefault();
+                var box = document.activeElement;
+                if (a) { a.link = addLink.value.trim(); a.name = addName.value.trim(); }
+                box.blur();
+                if (a && (k === 13 || k === 65376 || k === 40)) a.field = Math.min(a.field + 1, 2);
+                if (a && k === 38) a.field = Math.max(a.field - 1, 0);
+                render();
+            }
+            return;
+        }
         if (document.activeElement === searchInput) {
             if (e.keyCode === 13 || e.keyCode === 65376) {
                 e.preventDefault();
@@ -102,13 +123,7 @@
             state.byUrl[c.url] = c;
             (c.feeds || []).forEach(function (f) { if (!state.byUrl[f.url]) state.byUrl[f.url] = c; });
         });
-        applyOfficial();
-    }
-
-    function applyOfficial() {
-        state.visible = state.officialOnly
-            ? state.channels.filter(function (c) { return c.official; }).map(Data.officialFeeds)
-            : state.channels;
+        state.visible = list;
     }
 
     /** A favorite can be saved under any of a channel's feeds. */
@@ -122,10 +137,13 @@
     function buildMenu() {
         var counts = {};
         state.visible.forEach(function (c) { counts[c.category] = (counts[c.category] || 0) + 1; });
+        var mine = counts[Data.MY_CHANNELS] || 0;
+        delete counts[Data.MY_CHANNELS];
         state.menu = [
             { label: 'All channels', section: { kind: 'all' } },
             { label: 'Favorites', section: { kind: 'favorites' } },
             { label: 'Recently watched', section: { kind: 'recent' } },
+            { label: 'My channels', count: mine, section: { kind: 'mine' } },
             { label: 'Free to watch', section: { kind: 'free' }, accent: true },
             { label: 'Search the web', section: { kind: 'movies' } },
             { header: 'Categories' }
@@ -150,6 +168,8 @@
                 var c = state.byUrl[u];
                 if (c && seen.indexOf(c) < 0) { seen.push(c); state.rows.push(c); }
             });
+        } else if (s.kind === 'mine') {
+            state.rows = state.adding ? [] : state.visible.filter(function (c) { return c.mine; });
         } else if (s.kind === 'group') {
             state.rows = state.visible.filter(function (c) { return c.category === s.group; });
         } else {
@@ -161,7 +181,8 @@
     function toolbarItems() {
         if (state.section.kind === 'movies') return state.title ? [] : ['search'];
         if (state.section.kind === 'free') return state.free.item ? [] : freeTabs().concat(['search']);
-        return ['official', 'all'];
+        if (state.section.kind === 'mine') return state.adding ? [] : ['add'];
+        return [];
     }
 
     function selectSection(item) {
@@ -169,6 +190,8 @@
         state.rowIndex = 0;
         if (item.section.kind !== 'movies') state.title = null;
         state.free.item = null;
+        state.adding = null;
+        state.notice = '';
         computeRows();
         if (item.section.kind === 'free') {
             var tabs = freeTabs();
@@ -189,11 +212,12 @@
     function browseKey(key) {
         if (state.title) return episodeKey(key);
         if (state.free.item) return freePageKey(key);
+        if (state.adding) return addKey(key);
         var tb = toolbarItems();
         if (state.focus === 'menu') {
             if (key === 'up') moveMenu(-1);
             else if (key === 'down') moveMenu(1);
-            else if (key === 'right') { state.focus = state.rows.length ? 'list' : (tb.length ? 'toolbar' : 'list'); render(); }
+            else if (key === 'right') { state.focus = state.rows.length || !tb.length ? 'list' : 'toolbar'; render(); }
             else if (key === 'back') exitApp();
             else if (key === 'ok') selectSection(state.menu[state.menuIndex]);
         } else if (state.focus === 'toolbar') {
@@ -208,11 +232,11 @@
             else if (key === 'ok') {
                 var t = tb[state.toolbarIndex];
                 if (t === 'search') { searchInput.focus(); }
+                else if (t === 'add') openAddForm();
                 else if (state.section.kind === 'free') {
                     if (state.free.error || !sameTab(t, state.free.tab)) { state.free.tab = null; selectFreeTab(t); }
                     else if (state.rows.length) { state.focus = 'list'; render(); }
                 }
-                else { setOfficial(t === 'official'); }
             }
         } else {
             if (key === 'up') {
@@ -224,6 +248,7 @@
             else if (key === 'left' || key === 'back') { state.focus = 'menu'; render(); }
             else if (key === 'ok') openRow();
             else if ((key === 'right' || key === 'yellow') && isChannelSection()) toggleFavorite(state.rows[state.rowIndex]);
+            else if (key === 'red' && state.section.kind === 'mine') removeMine(state.rows[state.rowIndex]);
         }
     }
 
@@ -236,13 +261,70 @@
         render();
     }
 
-    function setOfficial(on) {
-        state.officialOnly = on;
-        Data.store('officialOnly', on ? '1' : '0');
-        applyOfficial();
-        buildMenu();
+    // ---- My channels ----
+
+    function openAddForm() {
+        state.adding = { field: 0, link: '', name: '', busy: false, error: '' };
+        state.notice = '';
+        addLink.value = '';
+        addName.value = '';
+        state.focus = 'list';
         computeRows();
         render();
+    }
+
+    function closeAddForm() {
+        state.adding = null;
+        computeRows();
+        state.focus = state.rows.length ? 'list' : 'toolbar';
+        state.toolbarIndex = 0;
+        render();
+    }
+
+    /** ▲▼ between the boxes and the buttons, ◀▶ between Add and Cancel, OK to type or press. */
+    function addKey(key) {
+        var a = state.adding;
+        if (a.busy) return;
+        if (key === 'up') a.field = a.field === 3 ? 1 : Math.max(0, a.field - 1);
+        else if (key === 'down') a.field = Math.min(a.field + 1, 2);
+        else if (key === 'left' && a.field === 3) a.field = 2;
+        else if (key === 'right' && a.field === 2) a.field = 3;
+        else if (key === 'back' || (key === 'left' && a.field < 2)) return closeAddForm();
+        else if (key === 'ok') {
+            if (a.field === 0) { render(); addLink.focus(); return; }
+            if (a.field === 1) { render(); addName.focus(); return; }
+            if (a.field === 3) return closeAddForm();
+            return submitAdd();
+        }
+        render();
+    }
+
+    function submitAdd() {
+        var a = state.adding;
+        if (!/^https?:\/\/\S+$/i.test(a.link)) {
+            a.error = 'Type the link first: it starts with http:// or https://';
+            a.field = 0;
+            render();
+            return;
+        }
+        a.busy = true;
+        a.error = '';
+        render();
+        Data.addMyLink(a.name, a.link).then(function (r) {
+            state.adding = null;
+            state.notice = r.kind === 'playlist' ? 'Added the playlist “' + r.name + '”.' : 'Added ' + r.name + '.';
+            load(false);
+        });
+    }
+
+    /** RED on one of My channels: removes it, or the whole playlist it came from. */
+    function removeMine(c) {
+        if (!c || !c.mine) return;
+        var url = c.mine === 'link' ? c.url : c.mine;
+        var playlist = c.mine !== 'link' && Data.myLinks('playlist').filter(function (l) { return l.url === url; })[0];
+        Data.removeMyLink(url);
+        state.notice = playlist ? 'Removed the playlist “' + playlist.name + '” and its channels.' : 'Removed ' + c.name + '.';
+        load(false);
     }
 
     function toggleFavorite(c) {
@@ -505,6 +587,7 @@
     function sectionTitle() {
         var s = state.section;
         if (s.kind === 'free') return 'Free to watch';
+        if (s.kind === 'mine') return 'My channels';
         return s.kind === 'movies' ? 'Search the web' : s.kind === 'favorites' ? 'Favorites' :
             s.kind === 'recent' ? 'Recently watched' : s.kind === 'group' ? s.group : 'All channels';
     }
@@ -522,12 +605,8 @@
                 '" id="searchSlot"></div></div>';
         } else if (s.kind === 'movies' && !state.title) {
             html = '<div class="search-box' + (state.focus === 'toolbar' ? ' focused' : '') + '" id="searchSlot"></div>';
-        } else if (isChannelSection()) {
-            html = ['official', 'all'].map(function (t, i) {
-                var on = (t === 'official') === state.officialOnly;
-                var cls = 'chip' + (on ? ' on' : '') + (state.focus === 'toolbar' && state.toolbarIndex === i ? ' focused' : '');
-                return '<div class="' + cls + '">' + (t === 'official' ? 'Official channels' : 'All streams') + '</div>';
-            }).join('');
+        } else if (s.kind === 'mine' && !state.adding) {
+            html = '<div class="chip' + (state.focus === 'toolbar' ? ' focused' : '') + '">+ Add a channel or playlist</div>';
         }
         // The search box is one element that moves between the toolbar and <body>, so typing and
         // focus survive re-renders. Park it before the toolbar is rebuilt.
@@ -575,12 +654,20 @@
             return '';
         }
         if (state.loading) return 'Loading channels…';
-        return state.rows.length + ' channels' + (state.errors.length ? ' · Couldn’t update: ' + esc(state.errors.join('; ')) : '');
+        if (s.kind === 'mine') {
+            if (state.adding) return '';
+            if (state.notice) return esc(state.notice);
+            return state.rows.length ? state.rows.length + ' channels · RED removes the selected one' : '';
+        }
+        // Saved copies are showing when a list couldn't update; the details are for troubleshooting.
+        return state.rows.length + ' channels' + (state.errors.length ? ' · Some lists couldn’t update (' + esc(state.errors.join('; ')) + ')' : '');
     }
 
     function renderList() {
         var list = $('list');
+        parkAddBoxes();
         if (state.title) { list.innerHTML = episodeHtml(); return; }
+        if (state.adding && state.section.kind === 'mine') { list.innerHTML = addFormHtml(); placeAddBoxes(); return; }
         if (state.free.item && state.section.kind === 'free') { list.innerHTML = freePageHtml(); return; }
         var rows = state.rows;
         if (!rows.length) {
@@ -591,7 +678,8 @@
                 msg = state.free.loading || state.free.error ? '' :
                     state.free.tab && state.free.tab.kind === 'search' ? 'Nothing found. Try another title.' : 'Nothing here yet.';
             } else {
-                msg = state.loading ? '' : state.section.kind === 'favorites' ? 'Press ▶ on a channel to add it here.' : 'Nothing here yet.';
+                msg = state.loading ? '' : state.section.kind === 'favorites' ? 'Press ▶ on a channel to add it here.' :
+                    state.section.kind === 'mine' ? 'Add a channel by its link: press ▲, then OK on “Add a channel or playlist”.' : 'Nothing here yet.';
             }
             list.innerHTML = '<div class="empty">' + msg + '</div>';
             return;
@@ -625,6 +713,43 @@
             '<div class="text"><div class="name">' + esc(c.name) + '</div><div class="sub">' + sub + '</div>' +
             (on.now ? progressBar((Date.now() - on.now.s) / (on.now.e - on.now.s)) : '') +
             '</div><div class="fav' + (fav ? ' on' : '') + '">' + (fav ? '★' : '☆') + '</div></div>';
+    }
+
+    function addFormHtml() {
+        var a = state.adding;
+        function box(i, label, id) {
+            return '<div class="add-field' + (a.field === i && state.focus === 'list' ? ' focused' : '') + '"><span>' + label + '</span>' +
+                '<div class="add-slot" id="' + id + '"></div></div>';
+        }
+        function button(i, label) {
+            return '<div class="add-btn' + (a.field === i && state.focus === 'list' ? ' focused' : '') + '">' + label + '</div>';
+        }
+        return '<div class="add-form"><div class="ep-title">Add a channel or playlist</div>' +
+            '<div class="sub">Type the link to a channel’s stream, or to a playlist of channels (M3U). It shows under My channels on this TV.</div>' +
+            box(0, 'Link', 'slotLink') + box(1, 'Name (optional)', 'slotName') +
+            '<div class="add-buttons">' + button(2, a.busy ? 'Checking the link…' : 'Add') + button(3, 'Cancel') + '</div>' +
+            (a.error ? '<div class="hint error">' + esc(a.error) + '</div>' : '') +
+            '<div class="hint">▲▼ choose · OK type (the TV keyboard opens) or press · BACK cancel</div></div>';
+    }
+
+    /** Takes the form's boxes out before the list is redrawn, keeping what was typed and the focus. */
+    function parkAddBoxes() {
+        [addLink, addName].forEach(function (el) {
+            if (el.parentNode !== document.body) document.body.appendChild(el);
+            el.style.display = 'none';
+        });
+    }
+
+    function placeAddBoxes() {
+        [[addLink, 'slotLink', 'https://…', state.adding.link], [addName, 'slotName', 'Optional', state.adding.name]].forEach(function (b) {
+            var el = b[0];
+            var hadFocus = document.activeElement === el;
+            $(b[1]).appendChild(el);
+            el.style.display = '';
+            el.placeholder = b[2];
+            if (!hadFocus) el.value = b[3];
+            if (hadFocus) el.focus();
+        });
     }
 
     function freeRow(t, i) {

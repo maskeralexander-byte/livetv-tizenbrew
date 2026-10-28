@@ -276,7 +276,6 @@ var Data = (function () {
         else if (u.indexOf('samsung') >= 0) service = 'Samsung TV Plus';
         else if (u.indexOf('cbsnews') >= 0 || u.indexOf('cbs.com') >= 0) service = 'CBS';
         else if (u.indexOf('pbs.org') >= 0) service = 'PBS';
-        else if (ch.official) service = 'Official stream';
         var extra = '';
         var region = feedRegion(ch);
         if (region !== 'US') extra = region;
@@ -351,17 +350,6 @@ var Data = (function () {
         for (var i = 0; i < LOCAL_HOSTS.length; i++) if (u.indexOf(LOCAL_HOSTS[i]) >= 0) return true;
         if (RE.callSign.test(feedCode(ch))) return true;
         return (ch.g || '').toLowerCase() === 'legislative' && !RE.national.test(ch.name || '');
-    }
-
-    /** With Official streams only, a merged channel keeps just its official feeds. */
-    function officialFeeds(ch) {
-        if (!ch.feeds) return ch;
-        var kept = ch.feeds.filter(function (f) { return f.official; });
-        if (kept.length === ch.feeds.length) return ch;
-        var copy = {};
-        for (var k in ch) if (ch.hasOwnProperty(k)) copy[k] = ch[k];
-        if (kept.length > 1) copy.feeds = kept; else delete copy.feeds;
-        return copy;
     }
 
     // ---- Guide ----
@@ -516,8 +504,97 @@ var Data = (function () {
                 return { raw: raw, guide: 'none' };
             });
         }).then(function (r) {
-            return { channels: mergeDuplicates(r.raw), errors: errors, guide: r.guide };
+            return loadMine(errors).then(function (mine) {
+                // The user's own copy of a stream wins over a playlist's, and stays out of merging.
+                var urls = {};
+                mine.forEach(function (c) { urls[c.url] = true; });
+                var rest = mergeDuplicates(r.raw.filter(function (c) { return !urls[c.url]; }));
+                return { channels: mine.concat(rest), errors: errors, guide: r.guide };
+            });
         });
+    }
+
+    // ---- My channels: links the user added on this TV ----
+
+    var MY_CHANNELS = 'My channels';
+
+    /** Saved links, [{ name, url }]: single channels (kind 'channel') or playlists ('playlist'). */
+    function myLinks(kind) { return storedJson(kind === 'playlist' ? 'myPlaylists' : 'myChannels', []); }
+
+    function saveMyLinks(kind, list) { store(kind === 'playlist' ? 'myPlaylists' : 'myChannels', JSON.stringify(list)); }
+
+    /** A playlist of channels has #EXTINF entries and no HLS tags (the phone app uses the same test). */
+    function isPlaylist(text) {
+        return text.indexOf('#EXTINF') >= 0 && text.indexOf('#EXT-X-') < 0 && /^\s*https?:/m.test(text);
+    }
+
+    /** The start of what a link returns (at most 256 KB, within 10 seconds). */
+    function peek(url) {
+        return new Promise(function (resolve, reject) {
+            var x = new XMLHttpRequest();
+            var done = false;
+            function finish() { if (!done) { done = true; resolve(x.responseText || ''); } }
+            x.open('GET', url, true);
+            x.timeout = 10000;
+            x.onprogress = function (e) { if (e.loaded > 262144) { finish(); x.abort(); } };
+            x.onload = function () { if (x.status >= 200 && x.status < 300) finish(); else reject(new Error('HTTP ' + x.status)); };
+            x.onerror = function () { if (!done) reject(new Error('network error')); };
+            x.ontimeout = function () { if (!done) reject(new Error('timed out')); };
+            x.send();
+        });
+    }
+
+    function hostOf(url) {
+        var m = /^https?:\/\/(?:www\.)?([^\/:?#]+)/i.exec(url);
+        return m ? m[1] : 'My channel';
+    }
+
+    /**
+     * Adds a link as a playlist or as one channel, reading it to tell which; one the TV can't read (a
+     * stream server that only lets players fetch it, or no answer) counts as a channel.
+     * Resolves to { kind, name }.
+     */
+    function addMyLink(name, url) {
+        return peek(url).then(function (t) { return isPlaylist(t) ? 'playlist' : 'channel'; },
+            function () { return 'channel'; }).then(function (kind) {
+            var label = name || hostOf(url);
+            var list = myLinks(kind).filter(function (l) { return l.url !== url; });
+            list.push({ name: label, url: url });
+            saveMyLinks(kind, list);
+            return { kind: kind, name: label };
+        });
+    }
+
+    /** Removes a single channel's link, or a whole playlist by its link. */
+    function removeMyLink(url) {
+        ['channel', 'playlist'].forEach(function (kind) {
+            saveMyLinks(kind, myLinks(kind).filter(function (l) { return l.url !== url; }));
+        });
+    }
+
+    /** The user's channels: each single link, then each playlist's channels. c.mine is where it came from. */
+    function loadMine(errors) {
+        var out = myLinks('channel').map(function (l) {
+            return myChannel({ name: l.name, url: l.url, g: [], tid: null, logo: null }, 'link');
+        });
+        return Promise.all(myLinks('playlist').map(function (pl) {
+            return get(pl.url, 30000).then(function (t) {
+                return parseM3u(t, pl.name).map(function (c) { return myChannel(c, pl.url); });
+            }, function (e) {
+                errors.push(pl.name + ': ' + e.message + ' (its server may not let the TV app read it)');
+                return [];
+            });
+        })).then(function (lists) {
+            lists.forEach(function (l) { out = out.concat(l); });
+            return out;
+        });
+    }
+
+    function myChannel(c, from) {
+        c.category = MY_CHANNELS;
+        c.mine = from;
+        c.official = true;
+        return c;
     }
 
     // ---- Free movies and TV: the Internet Archive's public domain films and shows ----
@@ -806,7 +883,8 @@ var Data = (function () {
 
     return {
         loadChannels: loadChannels, nowNext: nowNext, store: store, storedJson: storedJson, isOfficial: isOfficial,
-        parseM3u: parseM3u, mergeDuplicates: mergeDuplicates, officialFeeds: officialFeeds, categoryOrder: CATEGORY_ORDER,
+        parseM3u: parseM3u, mergeDuplicates: mergeDuplicates, categoryOrder: CATEGORY_ORDER,
+        MY_CHANNELS: MY_CHANNELS, myLinks: myLinks, addMyLink: addMyLink, removeMyLink: removeMyLink, isPlaylist: isPlaylist,
         Free: Free,
         vodSources: vodSources, searchTitles: searchTitles, tmdbId: tmdbId, vodUrl: vodUrl
     };

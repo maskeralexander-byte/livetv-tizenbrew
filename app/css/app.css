@@ -95,6 +95,21 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--
 .play-btn { margin-top: 36px; display: inline-block; padding: 18px 44px; border-radius: 40px; background: rgba(155, 123, 255, 0.35); font-weight: 600; }
 .play-btn.focused { background: var(--violet); box-shadow: 0 0 0 4px rgba(63, 224, 208, 0.6); }
 .hint { margin-top: 30px; font-size: 22px; color: var(--dim); }
+.hint.error { color: var(--pink); }
+
+/* My channels: the Add form */
+.add-form { padding: 10px 8px; max-width: 1200px; }
+.add-form .sub { margin-top: 8px; }
+.add-field { display: flex; align-items: center; margin-top: 26px; padding: 8px 24px; border-radius: 18px;
+    background: var(--card); border: 3px solid transparent; }
+.add-field span { width: 260px; color: var(--dim); }
+.add-field.focused { border-color: var(--cyan); }
+.add-slot { flex: 1; }
+#addLink, #addName { width: 100%; padding: 12px 0; font: inherit; color: var(--text); background: transparent; border: 0; outline: 0; }
+#addLink::placeholder, #addName::placeholder { color: var(--dim); }
+.add-buttons { margin-top: 34px; }
+.add-btn { display: inline-block; margin-right: 20px; padding: 16px 44px; border-radius: 40px; background: rgba(155, 123, 255, 0.25); font-weight: 600; }
+.add-btn.focused { background: var(--violet); box-shadow: 0 0 0 4px rgba(63, 224, 208, 0.6); }
 
 /* Player */
 #player { position: fixed; left: 0; top: 0; width: 1920px; height: 1080px; background: #000; }

@@ -1,6 +1,6 @@
 {
   "name": "freetv-live-tizenbrew",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Live TV with a program guide, free movies and TV, for Samsung TVs, as a TizenBrew app module.",
   "packageType": "app",
   "appName": "Live TV",
