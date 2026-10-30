@@ -7,6 +7,9 @@
     // The Add a channel form's two boxes; like the search box, each moves into its slot when shown.
     var addLink = document.getElementById('addLink');
     var addName = document.getElementById('addName');
+    // What's typed is kept as it's typed, so nothing is lost however the box is left.
+    addLink.addEventListener('input', function () { if (state.adding) state.adding.link = addLink.value.trim(); });
+    addName.addEventListener('input', function () { if (state.adding) state.adding.name = addName.value.trim(); });
     var Free = Data.Free;
     var VISIBLE_ROWS = 9;
 
@@ -314,6 +317,11 @@
             state.adding = null;
             state.notice = r.kind === 'playlist' ? 'Added the playlist “' + r.name + '”.' : 'Added ' + r.name + '.';
             load(false);
+        }, function (e) {
+            a.busy = false;
+            a.error = e.message;
+            a.field = 0;
+            render();
         });
     }
 
@@ -665,6 +673,9 @@
 
     function renderList() {
         var list = $('list');
+        // Redrawing the form while one of its boxes is being typed in would close the TV keyboard.
+        if (state.adding && state.section.kind === 'mine' && list.querySelector('.add-form') &&
+            (document.activeElement === addLink || document.activeElement === addName)) return;
         parkAddBoxes();
         if (state.title) { list.innerHTML = episodeHtml(); return; }
         if (state.adding && state.section.kind === 'mine') { list.innerHTML = addFormHtml(); placeAddBoxes(); return; }
@@ -1153,7 +1164,7 @@
     tickClock();
     setInterval(tickClock, 15000);
     // Keeps the "now playing" lines and progress bars current.
-    setInterval(function () { if (!player.open && isChannelSection()) render(); }, 60000);
+    setInterval(function () { if (!player.open && isChannelSection() && !state.adding) render(); }, 60000);
     // A fresh guide every 3 hours for a TV that's left on.
     setInterval(function () { load(false); }, 3 * 3600 * 1000);
     load(false);

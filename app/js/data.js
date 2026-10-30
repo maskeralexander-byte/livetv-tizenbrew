@@ -544,6 +544,14 @@ var Data = (function () {
         });
     }
 
+    var WEB_PAGE = 'That link opens a web page, not a stream. Look for a link that ends in .m3u8 (one channel) ' +
+        'or .m3u (a playlist).';
+
+    /** A website rather than a stream or playlist: what people often copy from the address bar. */
+    function isWebPage(text) {
+        return /^\s*(<!doctype html|<html)/i.test(text);
+    }
+
     function hostOf(url) {
         var m = /^https?:\/\/(?:www\.)?([^\/:?#]+)/i.exec(url);
         return m ? m[1] : 'My channel';
@@ -555,8 +563,10 @@ var Data = (function () {
      * Resolves to { kind, name }.
      */
     function addMyLink(name, url) {
-        return peek(url).then(function (t) { return isPlaylist(t) ? 'playlist' : 'channel'; },
-            function () { return 'channel'; }).then(function (kind) {
+        return peek(url).then(function (t) {
+            if (isWebPage(t)) throw new Error(WEB_PAGE);
+            return isPlaylist(t) ? 'playlist' : 'channel';
+        }, function () { return 'channel'; }).then(function (kind) {
             var label = name || hostOf(url);
             var list = myLinks(kind).filter(function (l) { return l.url !== url; });
             list.push({ name: label, url: url });
