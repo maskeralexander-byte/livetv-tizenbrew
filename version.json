@@ -1,6 +1,6 @@
 {
-  "versionCode": 112,
-  "versionName": "1.12",
+  "versionCode": 113,
+  "versionName": "1.13",
   "apk": "LiveTV.apk",
-  "notes": "Settings with My channels: add a channel or a playlist by its link. One channel list. Updates from inside the app. Easier-to-read text."
+  "notes": "Fixes adding channels: one added while the app was still loading now shows right away, and a web page's link is refused with a hint instead of being added."
 }
