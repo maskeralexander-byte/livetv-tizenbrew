@@ -26,6 +26,12 @@
         // while it's open, and the last thing added or removed.
         adding: null,
         notice: '',
+        // Channel screens: Find a channel's words, a channel number being typed, and the guide grid's
+        // window (start) and the time its focus is on (both ms; see guideHtml).
+        channelQuery: '',
+        digits: '',
+        digitTimer: null,
+        grid: { start: 0, focus: 0 },
         menu: [],
         menuIndex: 0,
         focus: 'list',                // menu | toolbar | list
@@ -61,7 +67,9 @@
         // Search the web
         sources: [], sourceIndex: 0, title: null, tmdb: null, season: 1, episode: 1,
         // Free to watch
-        item: null, videos: [], videoIndex: 0, lastSaved: 0, clockTimer: null
+        item: null, videos: [], videoIndex: 0, lastSaved: 0, clockTimer: null,
+        // Reconnecting a live stream that dropped (see feedFailed).
+        retries: 0, retryTimer: null
     };
 
     // ---- Keys ----
@@ -102,7 +110,7 @@
             if (e.keyCode === 13 || e.keyCode === 65376) {
                 e.preventDefault();
                 searchInput.blur();
-                if (state.section.kind === 'free') runFreeSearch(); else runSearch();
+                if (state.section.kind === 'free') runFreeSearch(); else if (isChannelSection()) runChannelFind(); else runSearch();
                 return;
             }
             if (e.keyCode === 10009 || e.keyCode === 27 || e.keyCode === 65385) { e.preventDefault(); searchInput.blur(); return; }
@@ -114,7 +122,7 @@
         if (!key) return;
         e.preventDefault();
         if (player.open) playerKey(key, e.keyCode - 48);
-        else browseKey(key);
+        else browseKey(key, e.keyCode - 48);
     });
 
     // ---- Channels ----
@@ -178,14 +186,23 @@
         } else {
             state.rows = state.visible;
         }
+        // Find a channel: its name, or the show on now or next.
+        if (isChannelSection() && state.channelQuery && !state.adding) {
+            var q = state.channelQuery.toLowerCase();
+            state.rows = state.rows.filter(function (c) {
+                if ((c.name || '').toLowerCase().indexOf(q) >= 0) return true;
+                var on = Data.nowNext(c);
+                return [on.now, on.next].some(function (p) { return p && p.t.toLowerCase().indexOf(q) >= 0; });
+            });
+        }
         if (state.rowIndex >= state.rows.length) state.rowIndex = Math.max(0, state.rows.length - 1);
     }
 
     function toolbarItems() {
         if (state.section.kind === 'movies') return state.title ? [] : ['search'];
         if (state.section.kind === 'free') return state.free.item ? [] : freeTabs().concat(['search']);
-        if (state.section.kind === 'mine') return state.adding ? [] : ['add'];
-        return [];
+        if (state.section.kind === 'mine') return state.adding ? [] : ['add', 'search'];
+        return ['search'];
     }
 
     function selectSection(item) {
@@ -195,6 +212,8 @@
         state.free.item = null;
         state.adding = null;
         state.notice = '';
+        state.channelQuery = '';
+        state.grid.focus = 0;
         computeRows();
         if (item.section.kind === 'free') {
             var tabs = freeTabs();
@@ -212,10 +231,11 @@
         render();
     }
 
-    function browseKey(key) {
+    function browseKey(key, digit) {
         if (state.title) return episodeKey(key);
         if (state.free.item) return freePageKey(key);
         if (state.adding) return addKey(key);
+        if (key === 'digit') { if (isChannelSection()) typeChannelDigit(digit); return; }
         var tb = toolbarItems();
         if (state.focus === 'menu') {
             if (key === 'up') moveMenu(-1);
@@ -241,6 +261,8 @@
                     else if (state.rows.length) { state.focus = 'list'; render(); }
                 }
             }
+        } else if (isChannelSection()) {
+            guideKey(key);
         } else {
             if (key === 'up') {
                 if (state.rowIndex > 0) state.rowIndex--; else if (tb.length) state.focus = 'toolbar';
@@ -250,9 +272,159 @@
             else if (key === 'chdown') { state.rowIndex = Math.min(state.rows.length - 1, state.rowIndex + VISIBLE_ROWS); render(); }
             else if (key === 'left' || key === 'back') { state.focus = 'menu'; render(); }
             else if (key === 'ok') openRow();
-            else if ((key === 'right' || key === 'yellow') && isChannelSection()) toggleFavorite(state.rows[state.rowIndex]);
-            else if (key === 'red' && state.section.kind === 'mine') removeMine(state.rows[state.rowIndex]);
         }
+    }
+
+    // ---- Channel screens: find, numbers, and the guide grid ----
+
+    function runChannelFind() {
+        state.channelQuery = searchInput.value.trim();
+        state.rowIndex = 0;
+        state.grid.focus = 0;
+        computeRows();
+        state.focus = state.rows.length ? 'list' : 'toolbar';
+        render();
+    }
+
+    /** Number keys: the channel with that number in the list, after a moment's pause between digits. */
+    function typeChannelDigit(d) {
+        state.digits += d;
+        clearTimeout(state.digitTimer);
+        state.digitTimer = setTimeout(function () {
+            var n = parseInt(state.digits, 10);
+            state.digits = '';
+            if (n >= 1 && n <= state.rows.length) {
+                state.rowIndex = n - 1;
+                state.focus = 'list';
+            }
+            render();
+        }, 1300);
+        render();
+    }
+
+    var SLOT = 30 * 60000;              // the guide's time bar steps
+    var WINDOW = 4 * SLOT;              // two hours across, like the Roku's guide
+    var HORIZON = 12 * 3600000;         // how far ahead ▶ can go
+
+    function nowSlot() { var n = Date.now(); return n - n % SLOT; }
+
+    /** The channel's shows from `from` to `to`, with the time between them filled with its name. */
+    function blocksOf(c, from, to) {
+        var out = [];
+        var t = from;
+        (c.p || []).forEach(function (p) {
+            if (p.e <= t || p.s >= to) return;
+            if (p.s > t) out.push({ t: c.name, s: t, e: p.s, filler: true });
+            out.push({ t: p.t, s: Math.max(p.s, t), e: Math.min(p.e, to), show: p });
+            t = Math.min(p.e, to);
+        });
+        if (t < to) out.push({ t: c.name, s: t, e: to, filler: true });
+        return out;
+    }
+
+    /** The guide's window starts at the current half hour or later; its focus is now or later. */
+    function settleGrid() {
+        var g = state.grid;
+        var now = Date.now();
+        if (!g.focus || g.focus < now) g.focus = now;
+        if (!g.start || g.start < nowSlot()) g.start = nowSlot();
+        if (g.focus >= g.start + WINDOW) g.start = g.focus - g.focus % SLOT;
+        if (g.focus < g.start) g.start = Math.max(nowSlot(), g.focus - g.focus % SLOT);
+    }
+
+    /** The row's blocks over the whole horizon and the index of the one the focus is on. */
+    function focusOf(c) {
+        var blocks = blocksOf(c, nowSlot(), nowSlot() + HORIZON);
+        var f = state.grid.focus;
+        for (var i = 0; i < blocks.length; i++) if (blocks[i].s <= f && f < blocks[i].e) return { blocks: blocks, i: i };
+        return { blocks: blocks, i: blocks.length - 1 };
+    }
+
+    /** ▲▼ channels (keeping the time), ◀▶ shows, OK watch, YELLOW favorite, RED removes one of My channels. */
+    function guideKey(key) {
+        var g = state.grid;
+        var c = state.rows[state.rowIndex];
+        settleGrid();
+        if (key === 'up') {
+            if (state.rowIndex > 0) state.rowIndex--; else state.focus = 'toolbar';
+        } else if (key === 'down') {
+            if (state.rowIndex < state.rows.length - 1) state.rowIndex++;
+        } else if (key === 'chup') {
+            state.rowIndex = Math.max(0, state.rowIndex - guideRows());
+        } else if (key === 'chdown') {
+            state.rowIndex = Math.min(state.rows.length - 1, state.rowIndex + guideRows());
+        } else if (key === 'right' && c) {
+            var r = focusOf(c);
+            if (r.i < r.blocks.length - 1) g.focus = r.blocks[r.i + 1].s;
+        } else if (key === 'left' && c) {
+            var l = focusOf(c);
+            if (l.i > 0 && l.blocks[l.i - 1].e > Date.now()) g.focus = Math.max(Date.now(), l.blocks[l.i - 1].s);
+            else state.focus = 'menu';
+        } else if (key === 'back') {
+            if (state.channelQuery) { state.channelQuery = ''; searchInput.value = ''; computeRows(); }
+            else state.focus = 'menu';
+        } else if (key === 'ok') {
+            return openRow();
+        } else if (key === 'yellow') {
+            return toggleFavorite(c);
+        } else if (key === 'red' && state.section.kind === 'mine') {
+            return removeMine(c);
+        }
+        settleGrid();
+        render();
+    }
+
+    /** How many channel rows fit under the preview and the time bar. */
+    function guideRows() {
+        return Math.max(3, Math.floor(($('list').clientHeight - 240) / 84));
+    }
+
+    function guideHtml() {
+        settleGrid();
+        var g = state.grid;
+        var rows = state.rows;
+        var now = Date.now();
+        var from = g.start;
+        var to = from + WINDOW;
+        var area = Math.max(400, $('list').clientWidth - 300);
+        var px = area / WINDOW;
+
+        // The focused show, Roku-style, above the grid.
+        var cur = rows[state.rowIndex];
+        var fb = focusOf(cur);
+        var b = fb.blocks[fb.i];
+        var show = b && b.show;
+        var html = '<div class="gpreview">' + logo(cur.logo, cur.name) + '<div class="gp-text">' +
+            '<div class="gp-kicker">' + (b && b.s <= now ? 'ON NOW' : 'LATER') + '</div>' +
+            '<div class="gp-title">' + esc(show ? show.t : cur.name) + '</div>' +
+            '<div class="gp-meta">' + esc(cur.name) + (show ? '  ·  ' + timeOf(show.s) + ' – ' + timeOf(show.e) : '  ·  Live programming') + '</div>' +
+            '<div class="gp-desc">' + esc(show && show.d ? show.d : '') + '</div></div></div>';
+
+        html += '<div class="gtimes"><div class="gcorner">' + (from > nowSlot() ? 'LATER' : 'TODAY') + '</div><div class="gslots">';
+        for (var t = from; t < to; t += SLOT) html += '<span style="left:' + Math.round((t - from) * px) + 'px">' + timeOf(t) + '</span>';
+        html += '</div></div>';
+
+        var shown = guideRows();
+        var start = Math.max(0, Math.min(state.rowIndex - Math.floor(shown / 2), rows.length - shown));
+        var end = Math.min(rows.length, start + shown);
+        for (var i = start; i < end; i++) {
+            var c = rows[i];
+            var focusedRow = i === state.rowIndex && state.focus === 'list';
+            var focusedBlock = focusedRow ? fb.blocks[fb.i] : null;
+            html += '<div class="grow' + (i === state.rowIndex ? ' current' : '') + '">' +
+                '<div class="gch"><span class="gnum">' + (i + 1) + '</span><span class="gname">' + esc(c.name) + '</span>' +
+                (isFavorite(c) ? '<span class="gfav">★</span>' : '') + '</div><div class="gprogs">';
+            blocksOf(c, from, to).forEach(function (blk) {
+                var on = focusedBlock && blk.s <= state.grid.focus && state.grid.focus < blk.e;
+                var left = Math.round((blk.s - from) * px);
+                var width = Math.max(8, Math.round((blk.e - blk.s) * px) - 6);
+                html += '<div class="gprog' + (blk.filler ? ' filler' : '') + (on ? ' focused' : '') + '" style="left:' + left +
+                    'px;width:' + width + 'px"><span>' + esc(blk.t) + '</span></div>';
+            });
+            if (now >= from && now < to) html += '<div class="gnow" style="left:' + Math.round((now - from) * px) + 'px"></div>';
+            html += '</div></div>';
+        }
+        return html;
     }
 
     function isChannelSection() { return state.section.kind !== 'movies' && state.section.kind !== 'free'; }
@@ -602,6 +774,11 @@
 
     function renderTop() {
         var s = state.section;
+        // Moving the box while it's being typed in would close the TV keyboard.
+        if (document.activeElement === searchInput && $('searchSlot')) {
+            $('status').innerHTML = statusText();
+            return;
+        }
         $('title').textContent = sectionTitle();
         var html = '';
         if (s.kind === 'free' && !state.free.item) {
@@ -613,8 +790,12 @@
                 '" id="searchSlot"></div></div>';
         } else if (s.kind === 'movies' && !state.title) {
             html = '<div class="search-box' + (state.focus === 'toolbar' ? ' focused' : '') + '" id="searchSlot"></div>';
-        } else if (s.kind === 'mine' && !state.adding) {
-            html = '<div class="chip' + (state.focus === 'toolbar' ? ' focused' : '') + '">+ Add a channel or playlist</div>';
+        } else if (isChannelSection() && !state.adding) {
+            html = toolbarItems().map(function (t, i) {
+                var f = state.focus === 'toolbar' && state.toolbarIndex === i;
+                if (t === 'add') return '<div class="chip' + (f ? ' focused' : '') + '">+ Add a channel or playlist</div>';
+                return '<div class="search-box' + (f ? ' focused' : '') + '" id="searchSlot"></div>';
+            }).join('');
         }
         // The search box is one element that moves between the toolbar and <body>, so typing and
         // focus survive re-renders. Park it before the toolbar is rebuilt.
@@ -626,8 +807,9 @@
             var hadFocus = document.activeElement === input;
             slot.appendChild(input);
             if (hadFocus) input.focus();
-            input.placeholder = s.kind === 'free' ? 'Search free titles' : 'Search a movie or show (press OK to type)';
-            if (s.kind === 'free' && !hadFocus) input.value = state.free.query;
+            input.placeholder = s.kind === 'free' ? 'Search free titles' : isChannelSection() ? 'Find a channel or show (press OK to type)' :
+                'Search a movie or show (press OK to type)';
+            if (!hadFocus) input.value = s.kind === 'free' ? state.free.query : isChannelSection() ? state.channelQuery : state.query || '';
             input.style.display = '';
         } else {
             input.style.display = 'none';
@@ -662,13 +844,14 @@
             return '';
         }
         if (state.loading) return 'Loading channels…';
-        if (s.kind === 'mine') {
-            if (state.adding) return '';
-            if (state.notice) return esc(state.notice);
-            return state.rows.length ? state.rows.length + ' channels · RED removes the selected one' : '';
-        }
+        if (state.digits) return 'Channel ' + state.digits + '…';
+        if (s.kind === 'mine' && state.adding) return '';
+        if (s.kind === 'mine' && state.notice) return esc(state.notice);
+        if (!state.rows.length) return '';
+        var count = state.channelQuery ? state.rows.length + ' match “' + esc(state.channelQuery) + '” · BACK shows all' : state.rows.length + ' channels';
+        var keys = '◀▶ shows · OK watch · YELLOW favorite' + (s.kind === 'mine' ? ' · RED removes' : '');
         // Saved copies are showing when a list couldn't update; the details are for troubleshooting.
-        return state.rows.length + ' channels' + (state.errors.length ? ' · Some lists couldn’t update (' + esc(state.errors.join('; ')) + ')' : '');
+        return count + ' · ' + keys + (state.errors.length ? ' · Some lists couldn’t update (' + esc(state.errors.join('; ')) + ')' : '');
     }
 
     function renderList() {
@@ -689,41 +872,22 @@
                 msg = state.free.loading || state.free.error ? '' :
                     state.free.tab && state.free.tab.kind === 'search' ? 'Nothing found. Try another title.' : 'Nothing here yet.';
             } else {
-                msg = state.loading ? '' : state.section.kind === 'favorites' ? 'Press ▶ on a channel to add it here.' :
+                msg = state.loading ? '' : state.channelQuery ? 'No channel or show matches “' + esc(state.channelQuery) + '”. Press OK on the box above to try other words.' :
+                    state.section.kind === 'favorites' ? 'Press YELLOW on a channel to add it here.' :
                     state.section.kind === 'mine' ? 'Add a channel by its link: press ▲, then OK on “Add a channel or playlist”.' : 'Nothing here yet.';
             }
             list.innerHTML = '<div class="empty">' + msg + '</div>';
             return;
         }
+        if (isChannelSection()) { list.innerHTML = guideHtml(); return; }
         var start = Math.max(0, Math.min(state.rowIndex - Math.floor(VISIBLE_ROWS / 2), rows.length - VISIBLE_ROWS));
         var end = Math.min(rows.length, start + VISIBLE_ROWS + 1);
         var html = '';
         for (var i = start; i < end; i++) {
             var k = state.section.kind;
-            html += k === 'movies' ? titleRow(rows[i], i) : k === 'free' ? freeRow(rows[i], i) : channelRow(rows[i], i);
+            html += k === 'movies' ? titleRow(rows[i], i) : freeRow(rows[i], i);
         }
         list.innerHTML = html;
-    }
-
-    function channelRow(c, i) {
-        var focused = i === state.rowIndex && state.focus === 'list';
-        var fav = isFavorite(c);
-        var on = Data.nowNext(c);
-        var sub;
-        if (on.now) {
-            sub = '<span class="dot"></span>' + esc(on.now.t) +
-                (on.next ? '<span class="next">  ·  Next ' + timeOf(on.next.s) + '  ' + esc(on.next.t) + '</span>' : '');
-        } else if (on.next) {
-            sub = '<span class="next">Next ' + timeOf(on.next.s) + '  ' + esc(on.next.t) + '</span>';
-        } else {
-            sub = esc(c.category) + (c.feeds ? '  ·  ' + c.feeds.length + ' feeds' : '');
-        }
-        return '<div class="row' + (focused ? ' focused' : '') + '">' +
-            '<div class="num">' + (i + 1) + '</div>' +
-            logo(c.logo, c.name) +
-            '<div class="text"><div class="name">' + esc(c.name) + '</div><div class="sub">' + sub + '</div>' +
-            (on.now ? progressBar((Date.now() - on.now.s) / (on.now.e - on.now.s)) : '') +
-            '</div><div class="fav' + (fav ? ' on' : '') + '">' + (fav ? '★' : '☆') + '</div></div>';
     }
 
     function addFormHtml() {
@@ -865,6 +1029,7 @@
 
     function closePlayer() {
         if (player.mode === 'free') saveFreePosition();
+        clearTimeout(player.retryTimer);
         Video.stop();
         clearInterval(player.clockTimer);
         $('frame').src = 'about:blank';
@@ -902,6 +1067,7 @@
         Data.store('recents', JSON.stringify(state.recents));
         player.feed = 0;
         player.tried = {};
+        player.retries = 0;
         startFeed();
         showBanner();
     }
@@ -914,12 +1080,27 @@
     function startFeed() {
         $('playerMsg').classList.add('hidden');
         player.tried[player.feed] = true;
+        clearTimeout(player.retryTimer);
         var s = currentStream();
-        Video.play(s.url, { ua: s.ua, onFail: feedFailed });
+        Video.play(s.url, {
+            ua: s.ua,
+            onFail: feedFailed,
+            onStart: function () { player.retries = 0; $('playerMsg').classList.add('hidden'); }
+        });
     }
 
-    /** A feed that doesn't play hands over to the channel's next untried feed. */
-    function feedFailed(why) {
+    /**
+     * A stream that was playing and dropped reconnects up to 3 times (after 2, 5 and 10 seconds), like
+     * the Roku; one that doesn't play hands over to the channel's next untried feed.
+     */
+    function feedFailed(why, wasPlaying) {
+        if (wasPlaying && player.retries < 3) {
+            var delay = [2000, 5000, 10000][player.retries++];
+            showMessage('Reconnecting…');
+            clearTimeout(player.retryTimer);
+            player.retryTimer = setTimeout(function () { if (player.open && player.mode === 'live') startFeed(); }, delay);
+            return;
+        }
         var c = player.list[player.index];
         var feeds = c.feeds || [];
         for (var i = 1; i < feeds.length; i++) {
@@ -1164,7 +1345,9 @@
     tickClock();
     setInterval(tickClock, 15000);
     // Keeps the "now playing" lines and progress bars current.
-    setInterval(function () { if (!player.open && isChannelSection() && !state.adding) render(); }, 60000);
+    setInterval(function () {
+        if (!player.open && isChannelSection() && !state.adding && document.activeElement !== searchInput) render();
+    }, 60000);
     // A fresh guide every 3 hours for a TV that's left on.
     setInterval(function () { load(false); }, 3 * 3600 * 1000);
     load(false);

@@ -45,7 +45,10 @@ var Video = (function () {
         return list;
     }
 
-    /** opts: onFail(reasons), onEnded(), onTime(sec), startAt (seconds), ua. */
+    /**
+     * opts: onFail(reasons, wasPlaying) (wasPlaying: it had played, then dropped), onStart(), onEnded(),
+     * onTime(sec), startAt (seconds), ua.
+     */
     function play(url, opts) {
         stop();
         cur = { url: url, opts: opts || {}, engines: enginesFor(url), index: -1, reasons: [] };
@@ -60,7 +63,7 @@ var Video = (function () {
         if (c.index >= c.engines.length) {
             cur = null;
             if (!c.engines.length) c.reasons.push('no way to play this here');
-            if (c.opts.onFail) c.opts.onFail(c.reasons.join(' · ') + device());
+            if (c.opts.onFail) c.opts.onFail(c.reasons.join(' · ') + device(), false);
             return;
         }
         c.engine = c.engines[c.index];
@@ -79,7 +82,7 @@ var Video = (function () {
         if (!c.started) { next(reason); return; }
         c.reasons.push(NAMES[c.engine] + ': ' + reason);
         stop();
-        if (c.opts.onFail) c.opts.onFail(c.reasons.join(' · ') + device());
+        if (c.opts.onFail) c.opts.onFail(c.reasons.join(' · ') + device(), true);
     }
 
     function started(c) {
@@ -87,6 +90,7 @@ var Video = (function () {
         clearTimeout(c.timer);
         if (!c.started) {
             c.started = true;
+            if (c.opts.onStart) c.opts.onStart();
             // Remember a way that works here, except AVPlay: it is last resort, as it draws under the page.
             if (c.engine !== 'avplay' && preferred !== c.engine) {
                 preferred = c.engine;

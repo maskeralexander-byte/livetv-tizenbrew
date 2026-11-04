@@ -70,6 +70,33 @@ html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--pink); margin-right: 10px; vertical-align: middle; }
 .progress { width: 60%; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); margin-top: 6px; }
 .progress i { display: block; height: 100%; border-radius: 3px; background: var(--neon); }
+/* Guide grid (channel screens): the focused show above a two-hour time grid, like the Roku's guide */
+.gpreview { display: flex; height: 196px; padding: 0 4px 14px; overflow: hidden; }
+.gpreview .logo { width: 170px; height: 128px; border-radius: 20px; font-size: 40px; }
+.gp-text { flex: 1; min-width: 0; padding-left: 28px; }
+.gp-kicker { font-size: 20px; letter-spacing: 2px; font-weight: 600; color: var(--cyan); }
+.gp-title { font-size: 42px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gp-meta { font-size: 24px; color: var(--pink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gp-desc { font-size: 22px; color: var(--dim); max-height: 58px; overflow: hidden; margin-top: 2px; }
+.gtimes { display: flex; height: 44px; font-size: 22px; color: var(--dim); }
+.gcorner { width: 300px; flex: none; padding-left: 10px; font-weight: 600; letter-spacing: 2px; color: var(--cyan); font-size: 20px; }
+.gslots { position: relative; flex: 1; }
+.gslots span { position: absolute; top: 2px; padding-left: 10px; border-left: 2px solid rgba(167, 162, 200, 0.35); white-space: nowrap; }
+.grow { display: flex; height: 76px; margin-bottom: 8px; }
+.gch { width: 290px; flex: none; margin-right: 10px; display: flex; align-items: center; padding: 0 16px; border-radius: 16px;
+    background: var(--card); border: 3px solid transparent; }
+.grow.current .gch { background: #2A2552; border-color: rgba(63, 224, 208, 0.55); }
+.gnum { width: 70px; flex: none; font-family: Bungee; font-size: 24px; color: var(--violet); }
+.grow.current .gnum { color: var(--cyan); }
+.gname { flex: 1; min-width: 0; font-size: 24px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gfav { padding-left: 8px; font-size: 24px; color: #FFC94D; }
+.gprogs { position: relative; flex: 1; }
+.gprog { position: absolute; top: 0; height: 76px; padding: 0 16px; display: flex; align-items: center; border-radius: 14px;
+    background: var(--card); border: 3px solid transparent; font-size: 24px; overflow: hidden; }
+.gprog span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gprog.filler { color: var(--dim); background: rgba(30, 27, 58, 0.35); }
+.gprog.focused { background: var(--violet); color: #fff; border-color: var(--cyan); box-shadow: 0 0 22px rgba(155, 123, 255, 0.55); }
+.gnow { position: absolute; top: -4px; bottom: -4px; width: 3px; border-radius: 2px; background: var(--pink); }
 .fav { width: 60px; text-align: center; font-size: 34px; color: var(--dim); }
 .fav.on { color: #FFC94D; }
 .row.focused .fav { color: var(--cyan); }

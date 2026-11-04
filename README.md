@@ -13,9 +13,11 @@ Live TV with a program guide, free movies and TV, for Samsung Smart TVs, as a
 
 ## Remote
 
-- **Browse:** ▲▼ move, OK plays, ◀ opens the menu (All channels, Favorites, Recently watched, My channels, Free to watch,
-  Search the web and 16 categories), ▶ (or yellow) adds/removes a favorite. Each channel shows what's on
-  now and next.
+- **Browse:** the channel screens are a cable-style guide, like the Roku's: the focused show (title,
+  channel, time, description) above a two-hour grid. ▲▼ channels, ◀▶ shows (◀ on the show that's on now
+  opens the menu), OK watches, YELLOW adds/removes a favorite, CH+/CH− page, number keys jump to a
+  channel. **Find a channel or show** above the grid: OK opens the TV keyboard; BACK shows all again.
+  A stream that drops reconnects on its own (3 tries) before moving to a backup feed.
 - **My channels** (in the menu): **+ Add a channel or playlist** opens a form for a link (a channel's
   stream or an M3U playlist) and a name, typed with the TV keyboard. RED removes one. They're kept on
   the TV.
